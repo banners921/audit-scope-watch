@@ -95,8 +95,8 @@ export default function Dashboard() {
                     <div className="text-xs text-muted-foreground">{p.category || "—"}</div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-mono text-xs text-muted-foreground">{formatTvl(p.tvl_usd)}</span>
-                    <RiskBadge score={p.security_score} />
+                    <span className="text-xs text-muted-foreground">{p.category || ""}</span>
+                    <span className="font-mono text-sm font-semibold text-white">{formatTvl(p.tvl_usd)}</span>
                   </div>
                 </Link>
               ))}
