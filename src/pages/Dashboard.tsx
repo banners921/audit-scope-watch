@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { supabase, type Protocol, type SignalAlert } from "@/lib/supabase";
 import { formatTvl } from "@/lib/format";
-import { RiskBadge, SeverityBadge } from "@/components/RiskBadge";
+import { SeverityBadge } from "@/components/RiskBadge";
 
 function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (
@@ -26,7 +26,7 @@ export default function Dashboard() {
           .select("*", { count: "exact", head: true })
           .is("last_audit_date", null)
           .gte("tvl_usd", 500000),
-        supabase.from("protocols").select("*", { count: "exact", head: true }).eq("has_bug_bounty", true),
+        supabase.from("protocols").select("*", { count: "exact", head: true }).is("has_bug_bounty", true),
       ]);
       return {
         tracked: tracked.count ?? 0,
@@ -38,12 +38,12 @@ export default function Dashboard() {
   });
 
   const topRisk = useQuery({
-    queryKey: ["top-risk"],
+    queryKey: ["top-by-tvl"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("protocols")
         .select("slug,name,category,tvl_usd,security_score")
-        .order("security_score", { ascending: false, nullsFirst: false })
+        .order("tvl_usd", { ascending: false, nullsFirst: false })
         .limit(5);
       if (error) throw error;
       return data as Protocol[];
@@ -95,8 +95,8 @@ export default function Dashboard() {
                     <div className="text-xs text-muted-foreground">{p.category || "—"}</div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-mono text-xs text-muted-foreground">{formatTvl(p.tvl_usd)}</span>
-                    <RiskBadge score={p.security_score} />
+                    <span className="text-xs text-muted-foreground">{p.category || ""}</span>
+                    <span className="font-mono text-sm font-semibold text-white">{formatTvl(p.tvl_usd)}</span>
                   </div>
                 </Link>
               ))}
