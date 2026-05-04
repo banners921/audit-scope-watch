@@ -6,6 +6,24 @@ import { supabase, type Protocol, type AuditRecord, type SignalAlert } from "@/l
 import { formatTvl, formatPct, riskTier } from "@/lib/format";
 import { SeverityBadge } from "@/components/RiskBadge";
 
+function formatAuditDate(audit_date: string | null | undefined, ...urls: (string | null | undefined)[]): { text: string; unknown: boolean } {
+  if (audit_date) {
+    const d = new Date(audit_date);
+    if (!isNaN(d.getTime())) return { text: format(d, "MMM yyyy"), unknown: false };
+  }
+  for (const url of urls) {
+    if (!url) continue;
+    const m = url.match(/(\d{4})[-_/](\d{1,2})(?:[-_/](\d{1,2}))?/);
+    if (m) {
+      const y = +m[1], mo = +m[2];
+      if (y > 2000 && y < 2100 && mo >= 1 && mo <= 12) {
+        return { text: format(new Date(y, mo - 1, 1), "MMM yyyy"), unknown: false };
+      }
+    }
+  }
+  return { text: "Date unknown", unknown: true };
+}
+
 function ScoreGauge({ score }: { score: number | null | undefined }) {
   const tier = riskTier(score);
   const color = tier === "high" ? "#EF4444" : tier === "medium" ? "#F59E0B" : tier === "low" ? "#10B981" : "#A0A8B8";
