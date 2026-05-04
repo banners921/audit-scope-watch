@@ -5,6 +5,7 @@ import { Search, Check, X } from "lucide-react";
 import { supabase, type Protocol } from "@/lib/supabase";
 import { formatTvl, formatPct } from "@/lib/format";
 import { RiskBadge } from "@/components/RiskBadge";
+import { LangBadge, ActiveDot } from "@/components/LangBadge";
 
 const PAGE_SIZE = 50;
 
@@ -17,6 +18,8 @@ export default function Protocols() {
   const [auditStatus, setAuditStatus] = useState<"all" | "never" | "stale" | "recent">("all");
   const [hasBounty, setHasBounty] = useState(false);
   const [hasHack, setHasHack] = useState(false);
+  const [language, setLanguage] = useState<string>("");
+  const [activeOnly, setActiveOnly] = useState(false);
   const [page, setPage] = useState(0);
 
   useEffect(() => {
@@ -24,7 +27,7 @@ export default function Protocols() {
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => setPage(0), [debounced, category, minTvl, auditStatus, hasBounty, hasHack]);
+  useEffect(() => setPage(0), [debounced, category, minTvl, auditStatus, hasBounty, hasHack, language, activeOnly]);
 
   const categories = useQuery({
     queryKey: ["categories"],
@@ -38,7 +41,7 @@ export default function Protocols() {
   });
 
   const protocols = useQuery({
-    queryKey: ["protocols", debounced, category, minTvl, auditStatus, hasBounty, hasHack, page],
+    queryKey: ["protocols", debounced, category, minTvl, auditStatus, hasBounty, hasHack, language, activeOnly, page],
     queryFn: async () => {
       let q = supabase
         .from("protocols")
@@ -51,6 +54,8 @@ export default function Protocols() {
       if (minTvl) q = q.gte("tvl_usd", Number(minTvl));
       if (hasBounty) q = q.eq("has_bug_bounty", true);
       if (hasHack) q = q.eq("has_been_hacked", true);
+      if (language) q = q.eq("smart_contract_language", language);
+      if (activeOnly) q = q.eq("has_active_contracts", true);
       if (auditStatus === "never") q = q.is("last_audit_date", null);
       if (auditStatus === "stale") {
         const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -84,7 +89,7 @@ export default function Protocols() {
             className="as-input pl-10"
           />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="as-input">
             <option value="">All categories</option>
             {categories.data?.map((c) => (
@@ -104,6 +109,17 @@ export default function Protocols() {
             <option value="stale">Stale (&gt;1yr)</option>
             <option value="recent">Recent (≤1yr)</option>
           </select>
+          <select value={language} onChange={(e) => setLanguage(e.target.value)} className="as-input">
+            <option value="">All languages</option>
+            <option value="Solidity">Solidity</option>
+            <option value="Rust">Rust</option>
+            <option value="Move">Move</option>
+            <option value="Cairo">Cairo</option>
+            <option value="Go">Go</option>
+            <option value="Vyper">Vyper</option>
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-3">
           <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-input border border-white/[0.08] cursor-pointer">
             <input type="checkbox" checked={hasBounty} onChange={(e) => setHasBounty(e.target.checked)} className="accent-primary" />
             <span className="text-sm text-muted-foreground">Has bounty</span>
@@ -111,6 +127,10 @@ export default function Protocols() {
           <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-input border border-white/[0.08] cursor-pointer">
             <input type="checkbox" checked={hasHack} onChange={(e) => setHasHack(e.target.checked)} className="accent-primary" />
             <span className="text-sm text-muted-foreground">Has been hacked</span>
+          </label>
+          <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-input border border-white/[0.08] cursor-pointer">
+            <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} className="accent-primary" />
+            <span className="text-sm text-muted-foreground">Active only</span>
           </label>
         </div>
       </div>
@@ -122,6 +142,7 @@ export default function Protocols() {
               <tr>
                 <th className="text-left px-4 py-3">Protocol</th>
                 <th className="text-left px-4 py-3">Category</th>
+                <th className="text-left px-4 py-3">Language</th>
                 <th className="text-right px-4 py-3">TVL</th>
                 <th className="text-right px-4 py-3">7d</th>
                 <th className="text-center px-4 py-3">Risk</th>
@@ -133,14 +154,15 @@ export default function Protocols() {
               {protocols.isLoading ? (
                 Array.from({ length: 10 }).map((_, i) => (
                   <tr key={i} className="border-t border-white/[0.04]">
-                    <td colSpan={7} className="px-4 py-3"><div className="h-6 bg-white/[0.03] rounded animate-pulse" /></td>
+                    <td colSpan={8} className="px-4 py-3"><div className="h-6 bg-white/[0.03] rounded animate-pulse" /></td>
                   </tr>
                 ))
               ) : protocols.data?.rows.length === 0 ? (
-                <tr><td colSpan={7} className="text-center text-muted-foreground py-12">No protocols match these filters</td></tr>
+                <tr><td colSpan={8} className="text-center text-muted-foreground py-12">No protocols match these filters</td></tr>
               ) : (
                 protocols.data?.rows.map((p) => {
                   const change = p.tvl_7d_change ?? null;
+                  const isActive = !!p.has_active_contracts && (p.github_commit_count_30d ?? 0) > 0;
                   return (
                     <tr
                       key={p.slug}
@@ -154,10 +176,12 @@ export default function Protocols() {
                           ) : (
                             <div className="w-7 h-7 rounded-md bg-white/5" />
                           )}
+                          <ActiveDot active={isActive} />
                           <span className="font-medium text-white">{p.name}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{p.category || "—"}</td>
+                      <td className="px-4 py-3"><LangBadge language={p.smart_contract_language} /></td>
                       <td className="px-4 py-3 text-right font-mono text-white">{formatTvl(p.tvl_usd)}</td>
                       <td className={`px-4 py-3 text-right font-mono ${change == null ? "text-muted-foreground" : change >= 0 ? "text-success" : "text-destructive"}`}>
                         {formatPct(change)}
