@@ -2,9 +2,20 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Github, Twitter, Globe } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import { supabase, type Protocol, type AuditRecord, type SignalAlert } from "@/lib/supabase";
+import { supabase, type Protocol, type SignalAlert } from "@/lib/supabase";
 import { formatTvl, formatPct, riskTier } from "@/lib/format";
 import { SeverityBadge } from "@/components/RiskBadge";
+
+type AuditReportRow = {
+  protocol_slug: string;
+  audit_firm: string | null;
+  audit_date: string | null;
+  report_url: string | null;
+  findings_critical: number | null;
+  findings_high: number | null;
+  findings_medium: number | null;
+  finding_count: number | null;
+};
 
 function formatAuditDate(audit_date: string | null | undefined, ...urls: (string | null | undefined)[]): { text: string; unknown: boolean } {
   if (audit_date) {
