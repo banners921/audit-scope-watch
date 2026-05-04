@@ -2,9 +2,20 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Github, Twitter, Globe } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import { supabase, type Protocol, type AuditRecord, type SignalAlert } from "@/lib/supabase";
+import { supabase, type Protocol, type SignalAlert } from "@/lib/supabase";
 import { formatTvl, formatPct, riskTier } from "@/lib/format";
 import { SeverityBadge } from "@/components/RiskBadge";
+
+type AuditReportRow = {
+  protocol_slug: string;
+  audit_firm: string | null;
+  audit_date: string | null;
+  report_url: string | null;
+  findings_critical: number | null;
+  findings_high: number | null;
+  findings_medium: number | null;
+  finding_count: number | null;
+};
 
 function formatAuditDate(audit_date: string | null | undefined, ...urls: (string | null | undefined)[]): { text: string; unknown: boolean } {
   if (audit_date) {
@@ -61,15 +72,21 @@ export default function ProtocolDetail() {
   });
 
   const audits = useQuery({
-    queryKey: ["audits", slug],
+    queryKey: ["audit-reports", slug],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("audit_history")
-        .select("*")
-        .eq("protocol_slug", slug)
-        .order("audit_date", { ascending: false });
-      if (error) throw error;
-      return data as AuditRecord[];
+      const candidates = [slug];
+      const stripped = slug.replace(/-(finance|protocol|v2|v3)$/i, "");
+      if (stripped && stripped !== slug) candidates.push(stripped);
+      for (const s of candidates) {
+        const { data, error } = await supabase
+          .from("audit_reports")
+          .select("*")
+          .eq("protocol_slug", s)
+          .order("audit_date", { ascending: false, nullsFirst: false });
+        if (error) throw error;
+        if (data && data.length > 0) return data as AuditReportRow[];
+      }
+      return [] as AuditReportRow[];
     },
   });
 
@@ -147,36 +164,37 @@ export default function ProtocolDetail() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr><th className="text-left py-2">Firm</th><th className="text-left py-2">Date</th><th className="text-left py-2">Type</th><th className="text-left py-2">Findings</th><th className="text-right py-2">Report</th></tr>
+                  <tr><th className="text-left py-2">Firm</th><th className="text-left py-2">Date</th><th className="text-left py-2">Findings</th><th className="text-right py-2">Report</th></tr>
                 </thead>
                 <tbody>
-                  {audits.data.map((a) => {
-                    const rec = a as AuditRecord & { source_link?: string | null };
-                    const displayDate = formatAuditDate(a.audit_date, a.report_url, rec.source_link);
+                  {audits.data.map((a, i) => {
+                    const displayDate = formatAuditDate(a.audit_date, a.report_url);
                     const c = a.findings_critical ?? 0;
                     const h = a.findings_high ?? 0;
                     const m = a.findings_medium ?? 0;
-                    const hasFindings = c + h + m > 0;
+                    const total = a.finding_count ?? 0;
+                    const pill = "inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[11px] font-semibold border";
                     return (
-                    <tr key={a.id} className="border-t border-white/[0.04]">
+                    <tr key={i} className="border-t border-white/[0.04]">
                       <td className="py-2 text-white">{a.audit_firm || "—"}</td>
                       <td className={`py-2 font-mono text-xs ${displayDate.unknown ? "text-muted-foreground/60" : "text-muted-foreground"}`}>{displayDate.text}</td>
-                      <td className="py-2 text-muted-foreground">{a.audit_type || "—"}</td>
-                      <td className="py-2 font-mono text-xs">
-                        {hasFindings ? (
-                          <span className="space-x-1.5">
-                            <span className="text-destructive">{c}C</span>
-                            <span className="text-warning">{h}H</span>
-                            <span className="text-muted-foreground">{m}M</span>
+                      <td className="py-2">
+                        {c + h + m > 0 ? (
+                          <span className="space-x-1">
+                            {c > 0 && <span className={`${pill} bg-destructive/15 text-destructive border-destructive/30`}>{c}C</span>}
+                            {h > 0 && <span className={`${pill} bg-warning/15 text-warning border-warning/30`}>{h}H</span>}
+                            {m > 0 && <span className={`${pill} bg-muted text-muted-foreground border-white/10`}>{m}M</span>}
                           </span>
-                        ) : "—"}
+                        ) : total > 0 ? (
+                          <span className={`${pill} bg-muted text-muted-foreground border-white/10`}>{total}f</span>
+                        ) : <span className="text-muted-foreground">—</span>}
                       </td>
                       <td className="py-2 text-right">
                         {a.report_url ? (
                           <a href={a.report_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
                             View <ExternalLink className="w-3 h-3" />
                           </a>
-                        ) : "—"}
+                        ) : <span className="text-muted-foreground">—</span>}
                       </td>
                     </tr>
                   );})}
