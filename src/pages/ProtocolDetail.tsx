@@ -129,14 +129,30 @@ export default function ProtocolDetail() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr><th className="text-left py-2">Firm</th><th className="text-left py-2">Date</th><th className="text-left py-2">Type</th><th className="text-right py-2">Report</th></tr>
+                  <tr><th className="text-left py-2">Firm</th><th className="text-left py-2">Date</th><th className="text-left py-2">Type</th><th className="text-left py-2">Findings</th><th className="text-right py-2">Report</th></tr>
                 </thead>
                 <tbody>
-                  {audits.data.map((a) => (
+                  {audits.data.map((a) => {
+                    const rec = a as AuditRecord & { source_link?: string | null };
+                    const displayDate = formatAuditDate(a.audit_date, a.report_url, rec.source_link);
+                    const c = a.findings_critical ?? 0;
+                    const h = a.findings_high ?? 0;
+                    const m = a.findings_medium ?? 0;
+                    const hasFindings = c + h + m > 0;
+                    return (
                     <tr key={a.id} className="border-t border-white/[0.04]">
                       <td className="py-2 text-white">{a.audit_firm || "—"}</td>
-                      <td className="py-2 font-mono text-xs text-muted-foreground">{a.audit_date || "—"}</td>
+                      <td className={`py-2 font-mono text-xs ${displayDate.unknown ? "text-muted-foreground/60" : "text-muted-foreground"}`}>{displayDate.text}</td>
                       <td className="py-2 text-muted-foreground">{a.audit_type || "—"}</td>
+                      <td className="py-2 font-mono text-xs">
+                        {hasFindings ? (
+                          <span className="space-x-1.5">
+                            <span className="text-destructive">{c}C</span>
+                            <span className="text-warning">{h}H</span>
+                            <span className="text-muted-foreground">{m}M</span>
+                          </span>
+                        ) : "—"}
+                      </td>
                       <td className="py-2 text-right">
                         {a.report_url ? (
                           <a href={a.report_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
@@ -145,7 +161,7 @@ export default function ProtocolDetail() {
                         ) : "—"}
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
