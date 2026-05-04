@@ -61,15 +61,21 @@ export default function ProtocolDetail() {
   });
 
   const audits = useQuery({
-    queryKey: ["audits", slug],
+    queryKey: ["audit-reports", slug],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("audit_history")
-        .select("*")
-        .eq("protocol_slug", slug)
-        .order("audit_date", { ascending: false });
-      if (error) throw error;
-      return data as AuditRecord[];
+      const candidates = [slug];
+      const stripped = slug.replace(/-(finance|protocol|v2|v3)$/i, "");
+      if (stripped && stripped !== slug) candidates.push(stripped);
+      for (const s of candidates) {
+        const { data, error } = await supabase
+          .from("audit_reports")
+          .select("*")
+          .eq("protocol_slug", s)
+          .order("audit_date", { ascending: false, nullsFirst: false });
+        if (error) throw error;
+        if (data && data.length > 0) return data as AuditReportRow[];
+      }
+      return [] as AuditReportRow[];
     },
   });
 
