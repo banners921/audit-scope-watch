@@ -18,7 +18,7 @@ export default function Dashboard() {
   const stats = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
-      const [tracked, highRisk, unaudited, bountied] = await Promise.all([
+      const [tracked, highRisk, unaudited, bountied, building] = await Promise.all([
         supabase.from("protocols").select("*", { count: "exact", head: true }),
         supabase.from("protocols").select("*", { count: "exact", head: true }).gte("security_score", 70),
         supabase
@@ -27,12 +27,14 @@ export default function Dashboard() {
           .is("last_audit_date", null)
           .gte("tvl_usd", 500000),
         supabase.from("protocols").select("*", { count: "exact", head: true }).is("has_bug_bounty", true),
+        supabase.from("protocols").select("*", { count: "exact", head: true }).eq("has_active_contracts", true),
       ]);
       return {
         tracked: tracked.count ?? 0,
         highRisk: highRisk.count ?? 0,
         unaudited: unaudited.count ?? 0,
         bountied: bountied.count ?? 0,
+        building: building.count ?? 0,
       };
     },
   });
@@ -65,11 +67,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Protocols Tracked" value={stats.data?.tracked ?? "—"} />
         <StatCard label="High Risk" value={stats.data?.highRisk ?? "—"} accent="text-destructive" />
         <StatCard label="Unaudited (≥$500K TVL)" value={stats.data?.unaudited ?? "—"} accent="text-warning" />
         <StatCard label="Have Bug Bounty" value={stats.data?.bountied ?? "—"} accent="text-success" />
+        <StatCard label="Actively Building" value={stats.data?.building ?? "—"} accent="text-teal-400" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
