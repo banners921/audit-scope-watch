@@ -28,6 +28,9 @@ export type Protocol = {
   last_audit_date: string | null;
   last_audit_firm: string | null;
   has_active_contracts: boolean | null;
+  smart_contract_language: string | null;
+  github_commit_count_30d: number | null;
+  github_last_commit: string | null;
   logo: string | null;
   url: string | null;
   twitter: string | null;
