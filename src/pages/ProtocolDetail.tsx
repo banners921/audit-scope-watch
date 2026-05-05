@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Github, Twitter, Globe } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { supabase, type Protocol, type SignalAlert } from "@/lib/supabase";
-import { formatTvl, formatPct, riskTier } from "@/lib/format";
+import { formatTvl, formatPct, riskTier, normalizeTwitterUrl } from "@/lib/format";
 import { SeverityBadge } from "@/components/RiskBadge";
 import { LangBadge } from "@/components/LangBadge";
 
@@ -137,7 +137,7 @@ export default function ProtocolDetail() {
               {p.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{p.description}</p>}
               <div className="flex items-center gap-3 mt-3">
                 {p.url && <a href={p.url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary"><Globe className="w-4 h-4" /></a>}
-                {p.twitter && <a href={p.twitter} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary"><Twitter className="w-4 h-4" /></a>}
+                {(() => { const tw = normalizeTwitterUrl(p.twitter); return tw && <a href={tw} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary"><Twitter className="w-4 h-4" /></a>; })()}
                 {p.github?.[0] && <a href={p.github[0]} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary"><Github className="w-4 h-4" /></a>}
               </div>
             </div>

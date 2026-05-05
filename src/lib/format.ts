@@ -21,6 +21,15 @@ export function riskTier(score: number | null | undefined): "high" | "medium" | 
   return "low";
 }
 
+export function normalizeTwitterUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = value.trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith("@")) return `https://x.com/${v.slice(1)}`;
+  return `https://x.com/${v}`;
+}
+
 export function auditStatusOf(date: string | null | undefined): "never" | "stale" | "recent" {
   if (!date) return "never";
   const days = (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
