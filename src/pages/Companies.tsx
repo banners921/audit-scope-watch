@@ -110,11 +110,7 @@ export default function Companies() {
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          {c.logo ? (
-                            <img src={c.logo} alt="" className="w-7 h-7 rounded-md bg-white/5 object-contain" onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
-                          ) : (
-                            <div className="w-7 h-7 rounded-md bg-white/5" />
-                          )}
+                          <CompanyLogo logo={c.logo} url={c.url} name={c.name} />
                           <span className="font-medium text-white">{c.name}</span>
                         </div>
                       </td>
