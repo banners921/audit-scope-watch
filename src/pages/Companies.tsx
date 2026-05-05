@@ -87,6 +87,10 @@ export default function Companies() {
         </div>
       </div>
 
+      <div className="text-xs font-mono text-muted-foreground px-1">
+        {(companies.data?.count ?? 0).toLocaleString()} companies
+      </div>
+
       <div className="as-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
