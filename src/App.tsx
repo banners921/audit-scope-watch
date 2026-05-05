@@ -11,6 +11,8 @@ import Protocols from "./pages/Protocols";
 import ProtocolDetail from "./pages/ProtocolDetail";
 import Companies from "./pages/Companies";
 import CompanyDetail from "./pages/CompanyDetail";
+import Funds from "./pages/Funds";
+import FundDetail from "./pages/FundDetail";
 import Alerts from "./pages/Alerts";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound.tsx";
