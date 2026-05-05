@@ -26,7 +26,23 @@ function fmtDate(d: string | null | undefined) {
   return format(dt, "MMM d, yyyy");
 }
 
-function investorList(v: FundingRound["lead_investors"]): string {
+function fmtMonthYear(d: string | null | undefined) {
+  if (!d) return "—";
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  return format(dt, "MMM yyyy");
+}
+
+function fmtAmount(n: number | null | undefined) {
+  if (n == null || Number(n) === 0) return "Undisclosed";
+  const v = Number(n);
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(v >= 1e10 ? 0 : 1)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+function investorList(v: FundingRound["lead_investors"] | null | undefined): string {
   if (!v) return "";
   if (Array.isArray(v)) return v.filter(Boolean).join(", ");
   return String(v);
