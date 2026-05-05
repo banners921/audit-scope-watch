@@ -52,6 +52,7 @@ function investorList(v: FundingRound["lead_investors"] | null | undefined): str
 export default function CompanyDetail() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
+  const [expandedRound, setExpandedRound] = useState<string | null>(null);
 
   const company = useQuery({
     queryKey: ["company", slug],
