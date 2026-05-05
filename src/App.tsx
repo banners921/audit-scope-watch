@@ -9,6 +9,8 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Protocols from "./pages/Protocols";
 import ProtocolDetail from "./pages/ProtocolDetail";
+import Companies from "./pages/Companies";
+import CompanyDetail from "./pages/CompanyDetail";
 import Alerts from "./pages/Alerts";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound.tsx";
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/protocols" element={<ProtectedRoute><Protocols /></ProtectedRoute>} />
             <Route path="/protocols/:slug" element={<ProtectedRoute><ProtocolDetail /></ProtectedRoute>} />
+            <Route path="/companies" element={<ProtectedRoute><Companies /></ProtectedRoute>} />
+            <Route path="/companies/:slug" element={<ProtectedRoute><CompanyDetail /></ProtectedRoute>} />
             <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
