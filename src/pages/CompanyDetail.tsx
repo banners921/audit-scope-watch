@@ -396,6 +396,11 @@ export default function CompanyDetail() {
                 );
               })}
             </div>
+          ) : (
+            <div className="text-sm text-muted-foreground py-4">No funding rounds recorded</div>
+          )}
+        </div>
+
 
         {/* DEPLOYMENTS */}
         <div className="as-card p-5">
