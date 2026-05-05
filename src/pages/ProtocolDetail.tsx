@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Github, Twitter, Globe } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { supabase, type Protocol, type SignalAlert } from "@/lib/supabase";
-import { formatTvl, formatPct, riskTier } from "@/lib/format";
+import { formatTvl, formatPct, riskTier, normalizeTwitterUrl } from "@/lib/format";
 import { SeverityBadge } from "@/components/RiskBadge";
 import { LangBadge } from "@/components/LangBadge";
 
