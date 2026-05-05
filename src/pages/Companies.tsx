@@ -5,6 +5,7 @@ import { Search, Twitter } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Company } from "@/lib/companies";
 import { normalizeTwitterUrl } from "@/lib/format";
+import { CompanyLogo } from "@/components/CompanyLogo";
 
 const PAGE_SIZE = 50;
 
