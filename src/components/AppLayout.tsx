@@ -34,6 +34,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       ? "Protocol Detail"
       : pathname.startsWith("/companies/")
       ? "Company Detail"
+      : pathname.startsWith("/funds/")
+      ? "Fund Detail"
       : "AuditScope");
 
   return (
