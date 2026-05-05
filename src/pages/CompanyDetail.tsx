@@ -49,6 +49,106 @@ function investorList(v: FundingRound["lead_investors"] | null | undefined): str
   return String(v);
 }
 
+function parseInvestors(v: unknown): string[] {
+  if (!v) return [];
+  const arr = Array.isArray(v) ? v : String(v).split(/[;,]/);
+  return arr.map((s) => String(s).trim()).filter(Boolean);
+}
+
+function extractDomain(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+const ROUND_COLORS: Record<string, string> = {
+  seed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  pre_seed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  "pre-seed": "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  series_a: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  "series a": "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  series_b: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+  "series b": "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+  series_c: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  "series c": "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  strategic: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  grant: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  ico: "bg-pink-500/15 text-pink-300 border-pink-500/30",
+};
+
+function roundPillColor(t: string | null | undefined): string {
+  const k = (t || "").toLowerCase().trim();
+  return ROUND_COLORS[k] || "bg-white/5 text-white border-white/10";
+}
+
+function InvestorAvatar({ name, website }: { name: string; website: string | null | undefined }) {
+  const [failed, setFailed] = useState(false);
+  const domain = extractDomain(website);
+  const initial = (name?.trim()?.[0] || "?").toUpperCase();
+  if (!domain || failed) {
+    return (
+      <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm font-semibold text-muted-foreground">
+        {initial}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={`https://logo.clearbit.com/${domain}`}
+      alt=""
+      className="w-10 h-10 rounded-full bg-white/5 border border-white/10 object-contain"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function ExpandedInvestors({
+  investors,
+  leads,
+  fundWebsite,
+}: {
+  investors: string[];
+  leads: string[];
+  fundWebsite: (n: string) => string | null;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? investors : investors.slice(0, 4);
+  const hiddenCount = investors.length - visible.length;
+  return (
+    <div className="bg-white/[0.04] border-l-2 border-teal-400 px-4 py-4 space-y-3">
+      {investors.length > 0 && (
+        <div className="flex flex-wrap items-start gap-4">
+          {visible.map((inv) => (
+            <div key={inv} className="flex flex-col items-center gap-1.5 w-20">
+              <InvestorAvatar name={inv} website={fundWebsite(inv)} />
+              <div className="text-[11px] text-muted-foreground text-center leading-tight line-clamp-2">{inv}</div>
+            </div>
+          ))}
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-semibold text-muted-foreground hover:text-white hover:bg-white/10 transition-colors self-start"
+            >
+              +{hiddenCount}
+            </button>
+          )}
+        </div>
+      )}
+      {leads.length > 0 && (
+        <div className="text-xs text-muted-foreground">
+          Led by <span className="text-teal-400 font-medium">{leads.join(", ")}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export default function CompanyDetail() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
@@ -90,6 +190,38 @@ export default function CompanyDetail() {
   });
 
   const protoSlugs = (protocols.data || []).map((p) => p.slug);
+
+  const allInvestorNames = Array.from(
+    new Set(
+      (funding.data || []).flatMap((r) => [
+        ...parseInvestors(r.lead_investors),
+        ...parseInvestors((r as any).all_investors),
+      ]),
+    ),
+  );
+
+  const fundsLookup = useQuery({
+    queryKey: ["fund-websites", allInvestorNames.sort().join("|")],
+    enabled: allInvestorNames.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("funds")
+        .select("name,website")
+        .in("name", allInvestorNames);
+      if (error) throw error;
+      const map = new Map<string, string | null>();
+      (data || []).forEach((f: { name: string; website: string | null }) => {
+        map.set(f.name.toLowerCase(), f.website);
+      });
+      return map;
+    },
+  });
+
+  const fundWebsite = (name: string): string | null => {
+    const m = fundsLookup.data;
+    if (!m) return null;
+    return m.get(name.toLowerCase()) ?? null;
+  };
 
   const audits = useQuery({
     queryKey: ["company-audits", slug, protoSlugs.join(",")],
@@ -224,22 +356,29 @@ export default function CompanyDetail() {
           {funding.isLoading ? (
             <div className="h-24 bg-white/[0.03] rounded animate-pulse" />
           ) : funding.data && funding.data.length > 0 ? (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {funding.data.map((r) => {
                 const all = (r as any).all_investors;
                 const isOpen = expandedRound === r.id;
-                const leads = investorList(r.lead_investors) || "—";
-                const allInv = investorList(all as any) || "—";
+                const leadArr = parseInvestors(r.lead_investors);
+                const allArr = parseInvestors(all);
+                const merged = Array.from(new Set([...leadArr, ...allArr]));
                 return (
-                  <div key={r.id} className="rounded overflow-hidden">
+                  <div
+                    key={r.id}
+                    className={`rounded overflow-hidden ${isOpen ? "border-l-2 border-teal-400" : ""}`}
+                  >
                     <button
                       type="button"
                       onClick={() => setExpandedRound(isOpen ? null : r.id)}
-                      className="w-full flex items-center gap-3 px-3 py-2 bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-3 py-3 bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-left"
                     >
                       <span className="font-mono text-xs text-muted-foreground whitespace-nowrap w-20">{fmtMonthYear(r.date)}</span>
-                      <span className="text-sm text-white flex-1 min-w-0 truncate">{r.round_type || "—"}</span>
-                      <span className="font-mono text-sm text-teal-400 whitespace-nowrap">{fmtAmount(r.amount_usd)}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${roundPillColor(r.round_type)}`}>
+                        {r.round_type || "—"}
+                      </span>
+                      <span className="flex-1" />
+                      <span className="font-mono text-lg font-semibold text-teal-400 whitespace-nowrap">{fmtAmount(r.amount_usd)}</span>
                       <ChevronDown
                         className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
                       />
@@ -250,16 +389,7 @@ export default function CompanyDetail() {
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <div className="bg-white/[0.04] border-l-2 border-teal-400 px-4 py-3 space-y-2 text-sm">
-                          <div>
-                            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Lead Investors</div>
-                            <div className="text-white">{leads}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">All Investors</div>
-                            <div className="text-white">{allInv}</div>
-                          </div>
-                        </div>
+                        <ExpandedInvestors investors={merged} leads={leadArr} fundWebsite={fundWebsite} />
                       </div>
                     </div>
                   </div>
@@ -270,6 +400,7 @@ export default function CompanyDetail() {
             <div className="text-sm text-muted-foreground py-4">No funding rounds recorded</div>
           )}
         </div>
+
 
         {/* DEPLOYMENTS */}
         <div className="as-card p-5">
