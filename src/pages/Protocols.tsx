@@ -151,6 +151,7 @@ export default function Protocols() {
                 <th className="text-right px-4 py-3">7d</th>
                 <th className="text-center px-4 py-3">Risk</th>
                 <th className="text-left px-4 py-3">Last Audit</th>
+                <th className="text-right px-4 py-3">Commits <span className="normal-case text-[10px]">(30d)</span></th>
                 <th className="text-center px-4 py-3">Bounty</th>
               </tr>
             </thead>
