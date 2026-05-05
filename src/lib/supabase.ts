@@ -18,6 +18,7 @@ export type Protocol = {
   category: string | null;
   chains: string[] | null;
   tvl_usd: number | null;
+  market_cap_usd: number | null;
   tvl_7d_change: number | null;
   security_score: number | null;
   has_been_hacked: boolean | null;
