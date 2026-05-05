@@ -213,6 +213,13 @@ export default function Protocols() {
                           <span className="text-destructive text-xs font-medium">Never</span>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-right font-mono text-xs">
+                        {(p.github_commit_count_30d ?? 0) > 0 ? (
+                          <span className="text-white">{p.github_commit_count_30d}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         {p.has_bug_bounty ? <Check className="w-4 h-4 text-success inline" /> : <X className="w-4 h-4 text-destructive inline" />}
                       </td>
