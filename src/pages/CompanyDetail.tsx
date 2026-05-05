@@ -49,6 +49,63 @@ function investorList(v: FundingRound["lead_investors"] | null | undefined): str
   return String(v);
 }
 
+function parseInvestors(v: unknown): string[] {
+  if (!v) return [];
+  const arr = Array.isArray(v) ? v : String(v).split(/[;,]/);
+  return arr.map((s) => String(s).trim()).filter(Boolean);
+}
+
+function extractDomain(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+const ROUND_COLORS: Record<string, string> = {
+  seed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  pre_seed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  "pre-seed": "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  series_a: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  "series a": "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  series_b: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+  "series b": "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+  series_c: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  "series c": "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  strategic: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  grant: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  ico: "bg-pink-500/15 text-pink-300 border-pink-500/30",
+};
+
+function roundPillColor(t: string | null | undefined): string {
+  const k = (t || "").toLowerCase().trim();
+  return ROUND_COLORS[k] || "bg-white/5 text-white border-white/10";
+}
+
+function InvestorAvatar({ name, website }: { name: string; website: string | null | undefined }) {
+  const [failed, setFailed] = useState(false);
+  const domain = extractDomain(website);
+  const initial = (name?.trim()?.[0] || "?").toUpperCase();
+  if (!domain || failed) {
+    return (
+      <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm font-semibold text-muted-foreground">
+        {initial}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={`https://logo.clearbit.com/${domain}`}
+      alt=""
+      className="w-10 h-10 rounded-full bg-white/5 border border-white/10 object-contain"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function CompanyDetail() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
