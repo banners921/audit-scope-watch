@@ -22,17 +22,12 @@ type Props = {
   className?: string;
 };
 
-export function CompanyLogo({ logo, url, name, className = "w-7 h-7 rounded-md" }: Props) {
+export function CompanyLogo({ logo: _logo, url, name, className = "w-7 h-7 rounded-md" }: Props) {
   const initial = (name?.trim()?.[0] || "?").toUpperCase();
-  const fallbackChain: string[] = [];
-  if (logo) fallbackChain.push(logo);
   const cb = clearbitLogo(url);
-  if (cb) fallbackChain.push(cb);
+  const [failed, setFailed] = useState(false);
 
-  const [idx, setIdx] = useState(0);
-  const src = fallbackChain[idx];
-
-  if (!src) {
+  if (!cb || failed) {
     return (
       <div className={`${className} bg-white/5 flex items-center justify-center text-muted-foreground font-semibold`}>
         {initial}
@@ -42,10 +37,10 @@ export function CompanyLogo({ logo, url, name, className = "w-7 h-7 rounded-md" 
 
   return (
     <img
-      src={src}
+      src={cb}
       alt=""
       className={`${className} bg-white/5 object-contain`}
-      onError={() => setIdx((i) => i + 1)}
+      onError={() => setFailed(true)}
     />
   );
 }
