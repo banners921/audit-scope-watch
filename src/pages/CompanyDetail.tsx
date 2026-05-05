@@ -146,7 +146,37 @@ export default function CompanyDetail() {
     },
   });
 
-  const protoSlugs = (protocols.data || []).map((p) => p.slug);
+  const allInvestorNames = Array.from(
+    new Set(
+      (funding.data || []).flatMap((r) => [
+        ...parseInvestors(r.lead_investors),
+        ...parseInvestors((r as any).all_investors),
+      ]),
+    ),
+  );
+
+  const fundsLookup = useQuery({
+    queryKey: ["fund-websites", allInvestorNames.sort().join("|")],
+    enabled: allInvestorNames.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("funds")
+        .select("name,website")
+        .in("name", allInvestorNames);
+      if (error) throw error;
+      const map = new Map<string, string | null>();
+      (data || []).forEach((f: { name: string; website: string | null }) => {
+        map.set(f.name.toLowerCase(), f.website);
+      });
+      return map;
+    },
+  });
+
+  const fundWebsite = (name: string): string | null => {
+    const m = fundsLookup.data;
+    if (!m) return null;
+    return m.get(name.toLowerCase()) ?? null;
+  };
 
   const audits = useQuery({
     queryKey: ["company-audits", slug, protoSlugs.join(",")],
