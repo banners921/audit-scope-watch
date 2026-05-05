@@ -146,6 +146,8 @@ export default function CompanyDetail() {
     },
   });
 
+  const protoSlugs = (protocols.data || []).map((p) => p.slug);
+
   const allInvestorNames = Array.from(
     new Set(
       (funding.data || []).flatMap((r) => [
