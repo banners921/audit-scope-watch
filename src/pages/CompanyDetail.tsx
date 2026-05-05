@@ -26,7 +26,23 @@ function fmtDate(d: string | null | undefined) {
   return format(dt, "MMM d, yyyy");
 }
 
-function investorList(v: FundingRound["lead_investors"]): string {
+function fmtMonthYear(d: string | null | undefined) {
+  if (!d) return "—";
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  return format(dt, "MMM yyyy");
+}
+
+function fmtAmount(n: number | null | undefined) {
+  if (n == null || Number(n) === 0) return "Undisclosed";
+  const v = Number(n);
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(v >= 1e10 ? 0 : 1)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+function investorList(v: FundingRound["lead_investors"] | null | undefined): string {
   if (!v) return "";
   if (Array.isArray(v)) return v.filter(Boolean).join(", ");
   return String(v);
@@ -206,21 +222,32 @@ export default function CompanyDetail() {
           {funding.isLoading ? (
             <div className="h-24 bg-white/[0.03] rounded animate-pulse" />
           ) : funding.data && funding.data.length > 0 ? (
-            <div className="space-y-3">
-              {funding.data.map((r) => (
-                <div key={r.id} className="border-l-2 border-primary/40 pl-3 py-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-white">{r.round_type || "Funding round"}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{fmtDate(r.date)}</div>
-                    </div>
-                    <div className="font-mono text-sm text-teal-400">{r.amount_usd ? formatTvl(r.amount_usd) : "—"}</div>
-                  </div>
-                  {investorList(r.lead_investors) && (
-                    <div className="text-xs text-muted-foreground mt-1">{investorList(r.lead_investors)}</div>
-                  )}
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="text-left py-2 pr-3">Date</th>
+                    <th className="text-left py-2 pr-3">Round</th>
+                    <th className="text-left py-2 pr-3">Amount</th>
+                    <th className="text-left py-2 pr-3">Lead Investors</th>
+                    <th className="text-left py-2">All Investors</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {funding.data.map((r) => {
+                    const all = (r as any).all_investors;
+                    return (
+                      <tr key={r.id} className="border-t border-white/5">
+                        <td className="py-2 pr-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{fmtMonthYear(r.date)}</td>
+                        <td className="py-2 pr-3 text-white">{r.round_type || "—"}</td>
+                        <td className="py-2 pr-3 font-mono text-teal-400 whitespace-nowrap">{fmtAmount(r.amount_usd)}</td>
+                        <td className="py-2 pr-3 text-muted-foreground">{investorList(r.lead_investors) || "—"}</td>
+                        <td className="py-2 text-muted-foreground">{investorList(all as any) || "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="text-sm text-muted-foreground py-4">No funding rounds recorded</div>
