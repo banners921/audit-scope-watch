@@ -151,6 +151,7 @@ export default function Protocols() {
                 <th className="text-right px-4 py-3">7d</th>
                 <th className="text-center px-4 py-3">Risk</th>
                 <th className="text-left px-4 py-3">Last Audit</th>
+                <th className="text-right px-4 py-3">Commits <span className="normal-case text-[10px]">(30d)</span></th>
                 <th className="text-center px-4 py-3">Bounty</th>
               </tr>
             </thead>
@@ -158,11 +159,11 @@ export default function Protocols() {
               {protocols.isLoading ? (
                 Array.from({ length: 10 }).map((_, i) => (
                   <tr key={i} className="border-t border-white/[0.04]">
-                    <td colSpan={8} className="px-4 py-3"><div className="h-6 bg-white/[0.03] rounded animate-pulse" /></td>
+                    <td colSpan={9} className="px-4 py-3"><div className="h-6 bg-white/[0.03] rounded animate-pulse" /></td>
                   </tr>
                 ))
               ) : protocols.data?.rows.length === 0 ? (
-                <tr><td colSpan={8} className="text-center text-muted-foreground py-12">No protocols match these filters</td></tr>
+                <tr><td colSpan={9} className="text-center text-muted-foreground py-12">No protocols match these filters</td></tr>
               ) : (
                 protocols.data?.rows.map((p) => {
                   const change = p.tvl_7d_change ?? null;
@@ -210,6 +211,13 @@ export default function Protocols() {
                           <span className="font-mono text-xs text-muted-foreground">{p.last_audit_date}</span>
                         ) : (
                           <span className="text-destructive text-xs font-medium">Never</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-xs">
+                        {(p.github_commit_count_30d ?? 0) > 0 ? (
+                          <span className="text-white">{p.github_commit_count_30d}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
