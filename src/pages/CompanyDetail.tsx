@@ -224,32 +224,47 @@ export default function CompanyDetail() {
           {funding.isLoading ? (
             <div className="h-24 bg-white/[0.03] rounded animate-pulse" />
           ) : funding.data && funding.data.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="text-left py-2 pr-3">Date</th>
-                    <th className="text-left py-2 pr-3">Round</th>
-                    <th className="text-left py-2 pr-3">Amount</th>
-                    <th className="text-left py-2 pr-3">Lead Investors</th>
-                    <th className="text-left py-2">All Investors</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {funding.data.map((r) => {
-                    const all = (r as any).all_investors;
-                    return (
-                      <tr key={r.id} className="border-t border-white/5">
-                        <td className="py-2 pr-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{fmtMonthYear(r.date)}</td>
-                        <td className="py-2 pr-3 text-white">{r.round_type || "—"}</td>
-                        <td className="py-2 pr-3 font-mono text-teal-400 whitespace-nowrap">{fmtAmount(r.amount_usd)}</td>
-                        <td className="py-2 pr-3 text-muted-foreground">{investorList(r.lead_investors) || "—"}</td>
-                        <td className="py-2 text-muted-foreground">{investorList(all as any) || "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="space-y-1">
+              {funding.data.map((r) => {
+                const all = (r as any).all_investors;
+                const isOpen = expandedRound === r.id;
+                const leads = investorList(r.lead_investors) || "—";
+                const allInv = investorList(all as any) || "—";
+                return (
+                  <div key={r.id} className="rounded overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedRound(isOpen ? null : r.id)}
+                      className="w-full flex items-center gap-3 px-3 py-2 bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-left"
+                    >
+                      <span className="font-mono text-xs text-muted-foreground whitespace-nowrap w-20">{fmtMonthYear(r.date)}</span>
+                      <span className="text-sm text-white flex-1 min-w-0 truncate">{r.round_type || "—"}</span>
+                      <span className="font-mono text-sm text-teal-400 whitespace-nowrap">{fmtAmount(r.amount_usd)}</span>
+                      <ChevronDown
+                        className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    <div
+                      className={`grid transition-all duration-300 ease-out ${
+                        isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="bg-white/[0.04] border-l-2 border-teal-400 px-4 py-3 space-y-2 text-sm">
+                          <div>
+                            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Lead Investors</div>
+                            <div className="text-white">{leads}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">All Investors</div>
+                            <div className="text-white">{allInv}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-sm text-muted-foreground py-4">No funding rounds recorded</div>
