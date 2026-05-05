@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Globe, Linkedin, Github, Check, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe, Linkedin, Github, Check, X, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { supabase, type Protocol } from "@/lib/supabase";
 import type { Company, FundingRound } from "@/lib/companies";
