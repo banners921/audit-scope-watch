@@ -4,11 +4,11 @@ import { LayoutGrid, Building2, Database, Bell, User as UserIcon, LogOut, Menu, 
 import { Logo } from "./Logo";
 import { useAuth } from "@/hooks/useAuth";
 
-const NAV = [
+const NAV: Array<{ to: string; label: string; icon: typeof LayoutGrid; nested?: boolean }> = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { to: "/companies", label: "Companies", icon: Building2 },
+  { to: "/protocols", label: "Protocols", icon: Database, nested: true },
   { to: "/funds", label: "Funds", icon: Wallet },
-  { to: "/protocols", label: "Protocols", icon: Database },
   { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/profile", label: "Profile", icon: UserIcon },
 ];
