@@ -6,6 +6,7 @@ import { supabase, type Protocol } from "@/lib/supabase";
 import type { Company, FundingRound } from "@/lib/companies";
 import { formatTvl, formatPct, normalizeTwitterUrl } from "@/lib/format";
 import { RiskBadge } from "@/components/RiskBadge";
+import { CompanyLogo } from "@/components/CompanyLogo";
 
 type AuditReportRow = {
   protocol_slug: string;
@@ -116,11 +117,7 @@ export default function CompanyDetail() {
       <div className="as-card p-6">
         <div className="flex flex-col lg:flex-row lg:items-start gap-6">
           <div className="flex items-start gap-4 flex-1 min-w-0">
-            {c.logo ? (
-              <img src={c.logo} alt="" className="w-14 h-14 rounded-xl bg-white/5 object-contain" />
-            ) : (
-              <div className="w-14 h-14 rounded-xl bg-white/5" />
-            )}
+            <CompanyLogo logo={c.logo} url={c.url} name={c.name} className="w-14 h-14 rounded-xl" />
             <div className="min-w-0 flex-1">
               <h2 className="text-2xl font-bold text-white truncate">{c.name}</h2>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
