@@ -1,17 +1,8 @@
 import { ReactNode, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LayoutGrid, Building2, Database, Bell, User as UserIcon, LogOut, Menu, Wallet } from "lucide-react";
+import { LayoutGrid, Building2, Database, Bell, User as UserIcon, LogOut, Menu, Wallet, Sparkles, ChevronDown } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "@/hooks/useAuth";
-
-const NAV: Array<{ to: string; label: string; icon: typeof LayoutGrid; nested?: boolean }> = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { to: "/companies", label: "Companies", icon: Building2 },
-  { to: "/protocols", label: "Protocols", icon: Database, nested: true },
-  { to: "/funds", label: "Funds", icon: Wallet },
-  { to: "/alerts", label: "Alerts", icon: Bell },
-  { to: "/profile", label: "Profile", icon: UserIcon },
-];
 
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -27,6 +18,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [intelOpen, setIntelOpen] = useState(true);
 
   const title =
     TITLES[pathname] ||
@@ -38,9 +30,22 @@ export function AppLayout({ children }: { children: ReactNode }) {
       ? "Fund Detail"
       : "AuditScope");
 
+  const topItemClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 rounded-lg transition-colors border-l-2 px-3 py-2.5 text-sm ${
+      isActive
+        ? "border-primary bg-primary/5 text-primary"
+        : "border-transparent text-muted-foreground hover:text-white hover:bg-white/[0.03]"
+    }`;
+
+  const subItemClass = ({ isActive }: { isActive: boolean }) =>
+    `group flex items-center gap-2 rounded-lg transition-colors pr-3 py-1.5 text-xs ml-4 pl-3 border-l-2 ${
+      isActive
+        ? "border-primary text-primary bg-primary/5"
+        : "border-transparent text-muted-foreground/70 hover:text-white hover:bg-white/[0.03]"
+    }`;
+
   return (
     <div className="min-h-screen flex bg-background text-foreground">
-      {/* Sidebar */}
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-surface border-r border-white/[0.06] transform transition-transform ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
@@ -50,32 +55,53 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <Logo size={28} />
         </div>
         <nav className="p-3 space-y-1">
-          {NAV.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg transition-colors border-l-2 ${
-                    item.nested
-                      ? "ml-5 pl-3 pr-3 py-2 text-xs"
-                      : "px-3 py-2.5 text-sm"
-                  } ${
-                    isActive
-                      ? "border-primary bg-primary/5 text-primary"
-                      : `border-transparent hover:text-white hover:bg-white/[0.03] ${
-                          item.nested ? "text-muted-foreground/70" : "text-muted-foreground"
-                        }`
-                  }`
-                }
-              >
-                <Icon className={item.nested ? "w-3.5 h-3.5" : "w-4 h-4"} />
-                <span className="font-medium">{item.label}</span>
+          <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} className={topItemClass}>
+            <LayoutGrid className="w-4 h-4" />
+            <span className="font-medium">Dashboard</span>
+          </NavLink>
+
+          <button
+            type="button"
+            onClick={() => setIntelOpen((v) => !v)}
+            className="w-full flex items-center gap-3 rounded-lg transition-colors border-l-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground hover:text-white hover:bg-white/[0.03]"
+            aria-expanded={intelOpen}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="font-medium flex-1 text-left">Intelligence</span>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform ${intelOpen ? "rotate-0" : "-rotate-90"}`}
+            />
+          </button>
+
+          <div
+            className={`grid transition-all duration-200 ease-out ${
+              intelOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div className="overflow-hidden space-y-1">
+              <NavLink to="/companies" onClick={() => setMobileOpen(false)} className={subItemClass}>
+                <Building2 className="w-3.5 h-3.5" />
+                <span className="font-medium">Companies</span>
               </NavLink>
-            );
-          })}
+              <NavLink to="/protocols" onClick={() => setMobileOpen(false)} className={subItemClass}>
+                <Database className="w-3.5 h-3.5" />
+                <span className="font-medium">Protocols</span>
+              </NavLink>
+            </div>
+          </div>
+
+          <NavLink to="/funds" onClick={() => setMobileOpen(false)} className={topItemClass}>
+            <Wallet className="w-4 h-4" />
+            <span className="font-medium">Funds</span>
+          </NavLink>
+          <NavLink to="/alerts" onClick={() => setMobileOpen(false)} className={topItemClass}>
+            <Bell className="w-4 h-4" />
+            <span className="font-medium">Alerts</span>
+          </NavLink>
+          <NavLink to="/profile" onClick={() => setMobileOpen(false)} className={topItemClass}>
+            <UserIcon className="w-4 h-4" />
+            <span className="font-medium">Profile</span>
+          </NavLink>
         </nav>
       </aside>
 
@@ -86,7 +112,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
         />
       )}
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 border-b border-white/[0.06] bg-surface/50 backdrop-blur flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">
