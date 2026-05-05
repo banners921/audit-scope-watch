@@ -28,7 +28,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const title =
     TITLES[pathname] ||
-    (pathname.startsWith("/protocols/") ? "Protocol Detail" : "AuditScope");
+    (pathname.startsWith("/protocols/")
+      ? "Protocol Detail"
+      : pathname.startsWith("/companies/")
+      ? "Company Detail"
+      : "AuditScope");
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
