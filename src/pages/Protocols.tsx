@@ -159,11 +159,11 @@ export default function Protocols() {
               {protocols.isLoading ? (
                 Array.from({ length: 10 }).map((_, i) => (
                   <tr key={i} className="border-t border-white/[0.04]">
-                    <td colSpan={8} className="px-4 py-3"><div className="h-6 bg-white/[0.03] rounded animate-pulse" /></td>
+                    <td colSpan={9} className="px-4 py-3"><div className="h-6 bg-white/[0.03] rounded animate-pulse" /></td>
                   </tr>
                 ))
               ) : protocols.data?.rows.length === 0 ? (
-                <tr><td colSpan={8} className="text-center text-muted-foreground py-12">No protocols match these filters</td></tr>
+                <tr><td colSpan={9} className="text-center text-muted-foreground py-12">No protocols match these filters</td></tr>
               ) : (
                 protocols.data?.rows.map((p) => {
                   const change = p.tvl_7d_change ?? null;
