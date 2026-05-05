@@ -182,7 +182,21 @@ export default function Protocols() {
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{p.category || "—"}</td>
                       <td className="px-4 py-3"><LangBadge language={p.smart_contract_language} /></td>
-                      <td className="px-4 py-3 text-right font-mono text-white">{formatTvl(p.tvl_usd)}</td>
+                      <td className="px-4 py-3 text-right font-mono">
+                        {(p.tvl_usd ?? 0) > 0 ? (
+                          <div>
+                            <div className="text-white">{formatTvl(p.tvl_usd)}</div>
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">TVL</div>
+                          </div>
+                        ) : (p.market_cap_usd ?? 0) > 0 ? (
+                          <div>
+                            <div className="text-muted-foreground text-xs">{formatTvl(p.market_cap_usd)}</div>
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Mkt Cap</div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className={`px-4 py-3 text-right font-mono ${change == null ? "text-muted-foreground" : change >= 0 ? "text-success" : "text-destructive"}`}>
                         {formatPct(change)}
                       </td>
