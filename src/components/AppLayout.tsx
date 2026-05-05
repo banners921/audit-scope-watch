@@ -58,14 +58,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors border-l-2 ${
+                  `flex items-center gap-3 rounded-lg transition-colors border-l-2 ${
+                    item.nested
+                      ? "ml-5 pl-3 pr-3 py-2 text-xs"
+                      : "px-3 py-2.5 text-sm"
+                  } ${
                     isActive
                       ? "border-primary bg-primary/5 text-primary"
-                      : "border-transparent text-muted-foreground hover:text-white hover:bg-white/[0.03]"
+                      : `border-transparent hover:text-white hover:bg-white/[0.03] ${
+                          item.nested ? "text-muted-foreground/70" : "text-muted-foreground"
+                        }`
                   }`
                 }
               >
-                <Icon className="w-4 h-4" />
+                <Icon className={item.nested ? "w-3.5 h-3.5" : "w-4 h-4"} />
                 <span className="font-medium">{item.label}</span>
               </NavLink>
             );
