@@ -356,22 +356,29 @@ export default function CompanyDetail() {
           {funding.isLoading ? (
             <div className="h-24 bg-white/[0.03] rounded animate-pulse" />
           ) : funding.data && funding.data.length > 0 ? (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {funding.data.map((r) => {
                 const all = (r as any).all_investors;
                 const isOpen = expandedRound === r.id;
-                const leads = investorList(r.lead_investors) || "—";
-                const allInv = investorList(all as any) || "—";
+                const leadArr = parseInvestors(r.lead_investors);
+                const allArr = parseInvestors(all);
+                const merged = Array.from(new Set([...leadArr, ...allArr]));
                 return (
-                  <div key={r.id} className="rounded overflow-hidden">
+                  <div
+                    key={r.id}
+                    className={`rounded overflow-hidden ${isOpen ? "border-l-2 border-teal-400" : ""}`}
+                  >
                     <button
                       type="button"
                       onClick={() => setExpandedRound(isOpen ? null : r.id)}
-                      className="w-full flex items-center gap-3 px-3 py-2 bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-3 py-3 bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-left"
                     >
                       <span className="font-mono text-xs text-muted-foreground whitespace-nowrap w-20">{fmtMonthYear(r.date)}</span>
-                      <span className="text-sm text-white flex-1 min-w-0 truncate">{r.round_type || "—"}</span>
-                      <span className="font-mono text-sm text-teal-400 whitespace-nowrap">{fmtAmount(r.amount_usd)}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${roundPillColor(r.round_type)}`}>
+                        {r.round_type || "—"}
+                      </span>
+                      <span className="flex-1" />
+                      <span className="font-mono text-lg font-semibold text-teal-400 whitespace-nowrap">{fmtAmount(r.amount_usd)}</span>
                       <ChevronDown
                         className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
                       />
@@ -382,26 +389,13 @@ export default function CompanyDetail() {
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <div className="bg-white/[0.04] border-l-2 border-teal-400 px-4 py-3 space-y-2 text-sm">
-                          <div>
-                            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Lead Investors</div>
-                            <div className="text-white">{leads}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">All Investors</div>
-                            <div className="text-white">{allInv}</div>
-                          </div>
-                        </div>
+                        <ExpandedInvestors investors={merged} leads={leadArr} fundWebsite={fundWebsite} />
                       </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-          ) : (
-            <div className="text-sm text-muted-foreground py-4">No funding rounds recorded</div>
-          )}
-        </div>
 
         {/* DEPLOYMENTS */}
         <div className="as-card p-5">
