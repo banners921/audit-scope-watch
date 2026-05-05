@@ -25,15 +25,22 @@ export default function Companies() {
   const categories = useQuery({
     queryKey: ["company-categories"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("companies")
-        .select("category")
-        .not("category", "is", null)
-        .limit(5000);
-      if (error) throw error;
       const set = new Set<string>();
-      data?.forEach((r: { category: string | null }) => r.category && set.add(r.category));
-      return Array.from(set).sort();
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("companies")
+          .select("category")
+          .not("category", "is", null)
+          .neq("category", "")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        data?.forEach((r: { category: string | null }) => r.category && set.add(r.category));
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      return Array.from(set).sort((a, b) => a.localeCompare(b));
     },
   });
 
@@ -78,6 +85,10 @@ export default function Companies() {
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="text-xs font-mono text-muted-foreground px-1">
+        {(companies.data?.count ?? 0).toLocaleString()} companies
       </div>
 
       <div className="as-card overflow-hidden">
