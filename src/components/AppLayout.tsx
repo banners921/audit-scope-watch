@@ -1,11 +1,12 @@
 import { ReactNode, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LayoutGrid, Database, Bell, User as UserIcon, LogOut, Menu } from "lucide-react";
+import { LayoutGrid, Building2, Database, Bell, User as UserIcon, LogOut, Menu } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
+  { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/protocols", label: "Protocols", icon: Database },
   { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/profile", label: "Profile", icon: UserIcon },
@@ -13,6 +14,7 @@ const NAV = [
 
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/companies": "Companies",
   "/protocols": "Protocol Database",
   "/alerts": "Alert Configuration",
   "/profile": "Profile",
@@ -26,7 +28,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const title =
     TITLES[pathname] ||
-    (pathname.startsWith("/protocols/") ? "Protocol Detail" : "AuditScope");
+    (pathname.startsWith("/protocols/")
+      ? "Protocol Detail"
+      : pathname.startsWith("/companies/")
+      ? "Company Detail"
+      : "AuditScope");
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
