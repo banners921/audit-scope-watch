@@ -106,6 +106,49 @@ function InvestorAvatar({ name, website }: { name: string; website: string | nul
   );
 }
 
+function ExpandedInvestors({
+  investors,
+  leads,
+  fundWebsite,
+}: {
+  investors: string[];
+  leads: string[];
+  fundWebsite: (n: string) => string | null;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? investors : investors.slice(0, 4);
+  const hiddenCount = investors.length - visible.length;
+  return (
+    <div className="bg-white/[0.04] border-l-2 border-teal-400 px-4 py-4 space-y-3">
+      {investors.length > 0 && (
+        <div className="flex flex-wrap items-start gap-4">
+          {visible.map((inv) => (
+            <div key={inv} className="flex flex-col items-center gap-1.5 w-20">
+              <InvestorAvatar name={inv} website={fundWebsite(inv)} />
+              <div className="text-[11px] text-muted-foreground text-center leading-tight line-clamp-2">{inv}</div>
+            </div>
+          ))}
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-semibold text-muted-foreground hover:text-white hover:bg-white/10 transition-colors self-start"
+            >
+              +{hiddenCount}
+            </button>
+          )}
+        </div>
+      )}
+      {leads.length > 0 && (
+        <div className="text-xs text-muted-foreground">
+          Led by <span className="text-teal-400 font-medium">{leads.join(", ")}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export default function CompanyDetail() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
