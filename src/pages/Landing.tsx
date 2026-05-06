@@ -140,7 +140,7 @@ function Nav({
         backdropFilter: "blur(8px)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
         <Logo size={64} />
         <span
           style={{
@@ -270,11 +270,14 @@ function Hero({
         >
           Know which protocols{" "}
           <span
+            key={theme}
             style={{
-              background: `linear-gradient(180deg, #67E8F9 0%, ${t.accent} 100%)`,
+              backgroundImage: `linear-gradient(180deg, #67E8F9 0%, ${t.accent} 100%)`,
               WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
               backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              color: "transparent",
+              display: "inline-block",
             }}
           >
             to call.
@@ -846,7 +849,7 @@ function Footer({ theme }: { theme: ThemeName }) {
         gap: 16,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
         <Logo size={64} />
         <span
           style={{
