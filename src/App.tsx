@@ -19,6 +19,13 @@ import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
+function LandingRedirect() {
+  if (typeof window !== "undefined") {
+    window.location.replace("/landing.html");
+  }
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
