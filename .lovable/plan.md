@@ -1,110 +1,51 @@
-# AuditScope — Phase 1 Build Plan
+I agree: they do not match. The footer logo is effectively still rendering as the smaller/no-crosshair version, and the current landing page setup is the wrong foundation for a working app page.
 
-A dark, data-forward B2B SaaS for protocol security intelligence. Connects to the existing Supabase project at `qktjbtmcjrwzmtqnszbq.supabase.co` and reads from `protocols`, `audit_history`, `signal_alerts`. Creates only one new table: `user_alerts`.
+Yes — the main problem is that the landing page is currently a standalone exported `public/landing.html` file that the React app redirects to from `/`. It contains a dumped/pre-rendered HTML snapshot plus embedded generated JavaScript, rather than being a first-class React page inside the app. That is why the buttons/links are not properly wired into the app and why logo changes are brittle/inconsistent.
 
-## Brand & Design System
+Plan:
 
-- Background `#080B14`, cards `#0F1420`, border subtle gray
-- Accent teal `#22D3EE` → blue `#2563EB` gradient (logo + CTAs only)
-- Risk colors: red `#EF4444`, amber `#F59E0B`, green `#10B981`
-- Text white, secondary `#A0A8B8`
-- Fonts: Inter (UI), JetBrains Mono (numbers/scores/TVL)
-- 16px rounded cards, generous padding, no background gradients
-- All tokens defined in `index.css` + `tailwind.config.ts` as semantic HSL variables
+1. Replace the static HTML redirect with a real React landing page
+   - Create a proper React component for the AuditScope landing page.
+   - Move the landing page into the app router at `/` instead of redirecting to `/landing.html`.
+   - Keep the existing landing page design, copy, colors, layout, pricing, and sections intact.
 
-Logo: rounded-square crosshair node (concentric circle + center dot, teal→blue gradient) next to "AuditScope" wordmark.
+2. Fix the logo once, shared by top and bottom
+   - Use one shared `AuditScopeLogo` / logo-mark component for both nav and footer.
+   - Use the crosshair icon with the 4 crosshair lines for both placements.
+   - Make both icons slightly larger.
+   - Keep spacing between icon and `AuditScope` uniform and intentional in both nav and footer.
+   - Move the top wordmark slightly closer to the icon as requested.
 
-## Auth & Supabase
+3. Make the navigation and CTAs actually work
+   - `Features` scrolls to the Features section.
+   - `Pricing` scrolls to the Pricing section.
+   - `Sign in` routes to `/login`.
+   - `Get Started` and `Get Started — $149/mo →` route to `/signup`.
+   - `hello@auditscope.ai` becomes a working `mailto:` link where appropriate.
 
-- Connect existing Supabase project via Supabase integration (URL provided)
-- Email/password signup + login at `/login`, `/signup`
-- `useAuth` hook wraps `onAuthStateChange` then `getSession`
-- All app routes protected; unauth → `/login`
-- No `profiles` table created — we use `auth.users` only (display name pulled from user metadata)
+4. Put the dark/light toggle in the actual top banner
+   - Remove the floating/static toggle behavior.
+   - Place the toggle inside the nav/banner area.
+   - Make it update the React page theme state properly.
+   - Keep the dark/light colors from the provided design.
 
-## App Shell / Navigation
+5. Clean up the old static implementation
+   - Stop using `LandingRedirect` in `src/App.tsx`.
+   - Leave `public/landing.html` unused or remove it if safe.
+   - Use the normal Vite/React app flow so the landing page works like the rest of the application.
 
-- `SidebarProvider` shell with `collapsible="icon"` left sidebar
-- Sidebar items: Dashboard, Protocols, Alerts, Profile (lucide icons + labels)
-- Top bar: AuditScope logo (left), user email + avatar dropdown (right) with Sign Out
+Technical details:
 
-## Pages
-
-### 1. `/login` and `/signup`
-Standard Supabase email/password forms, dark themed, branded.
-
-### 2. `/dashboard`
-- Four stat cards (mono numerals):
-  - Protocols Tracked — `count(*)` from protocols
-  - High Risk — `security_score >= 70` count
-  - Unaudited with TVL — `last_audit_date IS NULL AND tvl_usd >= 500000`
-  - Have Bug Bounty — `has_bug_bounty = true` count
-- Recent Signal Alerts table (latest 10, joined to protocol name): protocol, alert_type, severity badge, fired_at
-- Top 5 highest `security_score` protocols as cards (logo, name, score gauge mini)
-
-### 3. `/protocols` (core page)
-- Search input (by name, debounced)
-- Filters: category dropdown, chain multi-select, min TVL number, has bug bounty toggle, has been hacked toggle, audit status (never / stale >12mo / recent ≤12mo)
-- Sortable table columns: Logo+Name, Category, TVL ($ formatted), 7d % (green/red), Security Score colored badge (red ≥70, amber 40–69, green <40), Last Audit, Bug Bounty yes/no
-- Default sort: `security_score DESC`
-- Row click → `/protocols/[slug]`
-- Server-side query via Supabase with filters/sort; pagination (50/page)
-
-### 4. `/protocols/[slug]` (detail)
-Header: logo, name, category, chains as tags, TVL big mono number with 7d change, large circular security score gauge (color-coded), website / twitter / github icon links.
-
-Grid below (2×2):
-- AUDIT HISTORY — table from `audit_history` filtered by slug (Firm, Date, Type, Report link); red banner "Never audited" if empty
-- HACK HISTORY — green "No known exploits" or amber warning with hack count
-- BUG BOUNTY — red "No bug bounty program" or amount + link
-- SIGNAL ALERTS — recent alerts for this slug (alert_type, severity, fired_at)
-
-### 5. `/alerts`
-- New `user_alerts` table (created via migration)
-- List user's saved alerts with on/off toggle and delete
-- Create alert form: name, category multi-select, min TVL, security score threshold slider, trigger (TVL spike / stale audit / new hack / no bug bounty), delivery (Slack webhook URL or Telegram chat ID)
-- This phase stores config only; firing logic is out of scope
-
-### 6. `/profile`
-- Display name + email (from auth)
-- Notification prefs: Slack webhook, Telegram chat ID (stored in user metadata)
-- Billing placeholder: "Stripe coming soon"
-- Sign out
-
-## Database Work (only new schema)
-
-New table `public.user_alerts`:
+- Current root route:
 
 ```text
-id uuid pk default gen_random_uuid()
-user_id uuid references auth.users(id) on delete cascade not null
-name text not null
-categories text[] default '{}'
-min_tvl numeric default 0
-score_threshold int default 0
-trigger text check (trigger in ('tvl_spike','stale_audit','new_hack','no_bug_bounty'))
-delivery_type text check (delivery_type in ('slack','telegram'))
-delivery_target text not null
-enabled bool default true
-created_at timestamptz default now()
+/ -> LandingRedirect -> /landing.html
 ```
 
-RLS enabled. Policies: user can `select/insert/update/delete` rows where `user_id = auth.uid()`.
+- Target root route:
 
-No changes to existing `protocols`, `audit_history`, `signal_alerts` tables. We assume they are already RLS-readable to authenticated users; if reads return empty I'll add read policies.
+```text
+/ -> <LandingPage />
+```
 
-## Technical Notes
-
-- React Router routes added in `App.tsx` with a `ProtectedLayout` wrapping app shell
-- Supabase queries via `@tanstack/react-query` for caching and loading states
-- Reusable components: `StatCard`, `SecurityScoreBadge`, `ScoreGauge`, `TvlChange`, `SeverityBadge`, `ProtocolLogo`
-- Helpers: `formatTvl`, `formatPct`, `auditStatus(date)`
-- All tables use shadcn `Table`; filters use shadcn `Select`, `Input`, `Switch`, `Slider`
-- Numeric values wrapped in `font-mono` (JetBrains Mono via Google Fonts in `index.html`)
-
-## Out of Scope (Phase 1)
-
-- Landing page
-- Stripe billing (placeholder only)
-- Actual alert delivery / cron firing
-- Admin tools, team seats
+- The real landing page will live in React, so app routing, click handlers, smooth scrolling, theme state, and shared components will work normally.
