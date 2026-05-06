@@ -1,13 +1,47 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Twitter } from "lucide-react";
+import { Search, ArrowUp, ArrowDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Company } from "@/lib/companies";
-import { normalizeTwitterUrl } from "@/lib/format";
 import { CompanyLogo } from "@/components/CompanyLogo";
 
 const PAGE_SIZE = 50;
+
+type CompanyWithSignals = Company & {
+  last_audit_date: string | null;
+  total_tvl_usd: number | null;
+  has_bug_bounty: boolean | null;
+  has_been_hacked: boolean | null;
+  total_raised_usd: number | null;
+};
+
+function computeSignals(c: CompanyWithSignals): number {
+  let n = 0;
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  if (!c.last_audit_date) n++;
+  else if (new Date(c.last_audit_date) < twelveMonthsAgo) n++;
+  if ((c.total_tvl_usd ?? 0) > 1_000_000) n++;
+  if (!c.has_bug_bounty) n++;
+  if (c.has_been_hacked === true) n++;
+  if ((c.total_raised_usd ?? 0) > 1_000_000) n++;
+  return n;
+}
+
+function SignalBadge({ count }: { count: number }) {
+  const cls =
+    count >= 4
+      ? "bg-destructive/15 text-destructive border-destructive/30"
+      : count >= 2
+        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+        : "bg-white/5 text-muted-foreground border-white/10";
+  return (
+    <span className={`inline-flex items-center justify-center min-w-[1.75rem] px-2 py-0.5 rounded-md border text-xs font-mono font-semibold ${cls}`}>
+      {count}
+    </span>
+  );
+}
 
 export default function Companies() {
   const navigate = useNavigate();
