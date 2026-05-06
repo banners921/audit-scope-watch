@@ -1,13 +1,47 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Twitter } from "lucide-react";
+import { Search, ArrowUp, ArrowDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Company } from "@/lib/companies";
-import { normalizeTwitterUrl } from "@/lib/format";
 import { CompanyLogo } from "@/components/CompanyLogo";
 
 const PAGE_SIZE = 50;
+
+type CompanyWithSignals = Company & {
+  last_audit_date: string | null;
+  total_tvl_usd: number | null;
+  has_bug_bounty: boolean | null;
+  has_been_hacked: boolean | null;
+  total_raised_usd: number | null;
+};
+
+function computeSignals(c: CompanyWithSignals): number {
+  let n = 0;
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  if (!c.last_audit_date) n++;
+  else if (new Date(c.last_audit_date) < twelveMonthsAgo) n++;
+  if ((c.total_tvl_usd ?? 0) > 1_000_000) n++;
+  if (!c.has_bug_bounty) n++;
+  if (c.has_been_hacked === true) n++;
+  if ((c.total_raised_usd ?? 0) > 1_000_000) n++;
+  return n;
+}
+
+function SignalBadge({ count }: { count: number }) {
+  const cls =
+    count >= 4
+      ? "bg-destructive/15 text-destructive border-destructive/30"
+      : count >= 2
+        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+        : "bg-white/5 text-muted-foreground border-white/10";
+  return (
+    <span className={`inline-flex items-center justify-center min-w-[1.75rem] px-2 py-0.5 rounded-md border text-xs font-mono font-semibold ${cls}`}>
+      {count}
+    </span>
+  );
+}
 
 export default function Companies() {
   const navigate = useNavigate();
@@ -15,6 +49,7 @@ export default function Companies() {
   const [debounced, setDebounced] = useState("");
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(0);
+  const [signalSort, setSignalSort] = useState<"desc" | "asc" | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 250);
@@ -56,7 +91,7 @@ export default function Companies() {
       if (category) q = q.eq("category", category);
       const { data, error, count } = await q;
       if (error) throw error;
-      return { rows: (data || []) as Company[], count: count ?? 0 };
+      return { rows: (data || []) as CompanyWithSignals[], count: count ?? 0 };
     },
   });
 
@@ -64,6 +99,19 @@ export default function Companies() {
     () => Math.max(1, Math.ceil((companies.data?.count ?? 0) / PAGE_SIZE)),
     [companies.data?.count]
   );
+
+  const displayRows = useMemo(() => {
+    const rows = companies.data?.rows ?? [];
+    const withCounts = rows.map((c) => ({ c, n: computeSignals(c) }));
+    if (signalSort) {
+      withCounts.sort((a, b) => (signalSort === "desc" ? b.n - a.n : a.n - b.n));
+    }
+    return withCounts;
+  }, [companies.data?.rows, signalSort]);
+
+  const handleSignalHeaderClick = () => {
+    setSignalSort((s) => (s === "desc" ? "asc" : "desc"));
+  };
 
   return (
     <div className="space-y-4 max-w-[1400px]">
@@ -99,7 +147,17 @@ export default function Companies() {
                 <th className="text-left px-4 py-3">Company</th>
                 <th className="text-left px-4 py-3">Category</th>
                 <th className="text-left px-4 py-3">Description</th>
-                <th className="text-center px-4 py-3">Twitter</th>
+                <th className="text-center px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={handleSignalHeaderClick}
+                    className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-white transition-colors"
+                  >
+                    Signals
+                    {signalSort === "desc" && <ArrowDown className="w-3 h-3" />}
+                    {signalSort === "asc" && <ArrowUp className="w-3 h-3" />}
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -109,11 +167,10 @@ export default function Companies() {
                     <td colSpan={4} className="px-4 py-3"><div className="h-6 bg-white/[0.03] rounded animate-pulse" /></td>
                   </tr>
                 ))
-              ) : companies.data?.rows.length === 0 ? (
+              ) : displayRows.length === 0 ? (
                 <tr><td colSpan={4} className="text-center text-muted-foreground py-12">No companies match these filters</td></tr>
               ) : (
-                companies.data?.rows.map((c) => {
-                  const tw = normalizeTwitterUrl(c.twitter);
+                displayRows.map(({ c, n }) => {
                   return (
                     <tr
                       key={c.slug}
@@ -131,13 +188,7 @@ export default function Companies() {
                         <span className="line-clamp-1">{c.description || "—"}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {tw ? (
-                          <a href={tw} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-muted-foreground hover:text-primary inline-block">
-                            <Twitter className="w-4 h-4" />
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        <SignalBadge count={n} />
                       </td>
                     </tr>
                   );
