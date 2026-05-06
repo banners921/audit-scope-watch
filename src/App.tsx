@@ -16,15 +16,9 @@ import FundDetail from "./pages/FundDetail";
 import Alerts from "./pages/Alerts";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound.tsx";
+import Landing from "./pages/Landing";
 
 const queryClient = new QueryClient();
-
-function LandingRedirect() {
-  if (typeof window !== "undefined") {
-    window.location.replace("/landing.html");
-  }
-  return null;
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -35,7 +29,7 @@ const App = () => (
           <Routes>
             <Route
               path="/"
-              element={<LandingRedirect />}
+              element={<Landing />}
             />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
