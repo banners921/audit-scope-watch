@@ -286,41 +286,7 @@ export default function ProtocolDetail() {
           )}
         </div>
 
-        {/* GITHUB ACTIVITY */}
-        <div className="as-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-3">GitHub Activity</h3>
-          {p.smart_contract_language == null && p.github_commit_count_30d == null && p.github_last_commit == null ? (
-            <div className="text-sm text-muted-foreground py-4">No GitHub data</div>
-          ) : (
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Language</span>
-                {p.smart_contract_language ? <LangBadge language={p.smart_contract_language} /> : <span className="text-muted-foreground">—</span>}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Commits (30d)</span>
-                <span className="font-mono text-white">
-                  {p.github_commit_count_30d ?? "—"}
-                  {(p.github_commit_count_30d ?? 0) > 0 && <span className="text-success ml-1">↑</span>}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Last commit</span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {p.github_last_commit ? format(new Date(p.github_last_commit), "MMM d, yyyy") : "—"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-white/[0.05]">
-                <span className="text-muted-foreground">Status</span>
-                {p.has_active_contracts && (p.github_commit_count_30d ?? 0) > 0 ? (
-                  <span className="text-xs px-2 py-0.5 rounded-md bg-success/15 text-success border border-success/30 font-medium">Actively building</span>
-                ) : (
-                  <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-muted-foreground border border-white/10 font-medium">Dormant</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <GithubActivityCard githubUrls={p.github} />
       </div>
 
       {p.last_audit_date && (
