@@ -414,10 +414,7 @@ export default function CompanyDetail() {
           ) : (
             <div className="text-sm text-muted-foreground py-4">No funding rounds recorded</div>
           )}
-      </div>
-
-      <CompanyGithubActivity githubUrls={protocolGithubUrls} />
-
+        </div>
 
         {/* DEPLOYMENTS */}
         <div className="as-card p-5">
@@ -452,6 +449,9 @@ export default function CompanyDetail() {
           )}
         </div>
       </div>
+
+      <CompanyGithubActivity githubUrls={protocolGithubUrls} />
+
 
       {/* AUDIT HISTORY */}
       <div className="as-card p-5">
