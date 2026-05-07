@@ -412,24 +412,18 @@ export default function CompanyDetail() {
                 <thead className="text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="text-left py-2">Protocol</th>
-                    <th className="text-right py-2">TVL</th>
-                    <th className="text-right py-2">7d</th>
-                    <th className="text-center py-2">Risk</th>
+                    <th className="text-left py-2">Category</th>
+                    <th className="text-left py-2">Chains</th>
                     <th className="text-left py-2">Last Audit</th>
-                    <th className="text-center py-2">Bounty</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ps.map((p) => (
                     <tr key={p.slug} onClick={() => navigate(`/protocols/${p.slug}`)} className="border-t border-white/[0.04] hover:bg-white/[0.02] cursor-pointer">
                       <td className="py-2 text-white font-medium">{p.name}</td>
-                      <td className="py-2 text-right font-mono text-muted-foreground">{(p.tvl_usd ?? 0) > 0 ? formatTvl(p.tvl_usd) : "—"}</td>
-                      <td className={`py-2 text-right font-mono ${p.tvl_7d_change == null ? "text-muted-foreground" : p.tvl_7d_change >= 0 ? "text-success" : "text-destructive"}`}>{formatPct(p.tvl_7d_change)}</td>
-                      <td className="py-2 text-center"><RiskBadge score={p.security_score} /></td>
+                      <td className="py-2 text-muted-foreground">{p.category || "—"}</td>
+                      <td className="py-2 text-muted-foreground text-xs">{(p.chains && p.chains.length > 0) ? p.chains.slice(0, 4).join(", ") + (p.chains.length > 4 ? ` +${p.chains.length - 4}` : "") : "—"}</td>
                       <td className="py-2 font-mono text-xs text-muted-foreground">{p.last_audit_date || "—"}</td>
-                      <td className="py-2 text-center">
-                        {p.has_bug_bounty ? <Check className="w-4 h-4 text-success inline" /> : <X className="w-4 h-4 text-destructive inline" />}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
