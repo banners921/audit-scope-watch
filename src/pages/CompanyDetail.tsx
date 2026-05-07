@@ -149,7 +149,25 @@ function ExpandedInvestors({
   );
 }
 
-
+function CompanyDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 300;
+  const display = !isLong || expanded ? text : text.slice(0, 300).trimEnd() + "…";
+  return (
+    <div className="mt-3 max-w-3xl">
+      <p className="text-sm text-muted-foreground whitespace-pre-line">{display}</p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-xs text-primary hover:underline"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+}
 export default function CompanyDetail() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
@@ -288,7 +306,7 @@ export default function CompanyDetail() {
                 {c.industry && <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-muted-foreground border border-white/10">{c.industry}</span>}
                 {c.company_type && <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-muted-foreground border border-white/10">{c.company_type}</span>}
               </div>
-              {c.description && <p className="text-sm text-muted-foreground mt-3 max-w-3xl">{c.description}</p>}
+              {c.description && <CompanyDescription text={c.description} />}
               <div className="flex items-center gap-3 mt-3">
                 {(() => {
                   const gh = (c as unknown as { github?: string | null }).github || null;

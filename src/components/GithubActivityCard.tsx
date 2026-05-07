@@ -1,8 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ghHeaders } from "@/lib/liveData";
 import { LangBadge } from "@/components/LangBadge";
+
+const GH_HEADERS: HeadersInit = {
+  Authorization: "Bearer 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",
+  Accept: "application/vnd.github.v3+json",
+};
 
 function parseGithubUrl(url: string | null | undefined): { owner: string; repo: string | null } | null {
   if (!url) return null;
@@ -28,7 +32,7 @@ export function GithubActivityCard({ githubUrls }: { githubUrls: string[] | null
     enabled: !!parsed,
     queryFn: async () => {
       if (!parsed) return null;
-      const headers = ghHeaders();
+      const headers = GH_HEADERS;
       let owner = parsed.owner;
       let repo = parsed.repo;
 
