@@ -149,7 +149,25 @@ function ExpandedInvestors({
   );
 }
 
-
+function CompanyDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 300;
+  const display = !isLong || expanded ? text : text.slice(0, 300).trimEnd() + "…";
+  return (
+    <div className="mt-3 max-w-3xl">
+      <p className="text-sm text-muted-foreground whitespace-pre-line">{display}</p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-xs text-primary hover:underline"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+}
 export default function CompanyDetail() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
