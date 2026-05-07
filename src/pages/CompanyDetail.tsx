@@ -182,7 +182,7 @@ export default function CompanyDetail() {
       const { data, error } = await supabase
         .from("protocols")
         .select("*")
-        .eq("company_slug", slug)
+        .eq("parent_slug", slug)
         .order("tvl_usd", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return (data || []) as Protocol[];
