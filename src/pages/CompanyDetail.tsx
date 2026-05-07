@@ -85,11 +85,10 @@ function roundPillColor(t: string | null | undefined): string {
   return ROUND_COLORS[k] || "bg-white/5 text-white border-white/10";
 }
 
-function InvestorAvatar({ name, website }: { name: string; website: string | null | undefined }) {
+function InvestorAvatar({ name, logo }: { name: string; logo: string | null | undefined }) {
   const [failed, setFailed] = useState(false);
-  const domain = extractDomain(website);
   const initial = (name?.trim()?.[0] || "?").toUpperCase();
-  if (!domain || failed) {
+  if (!logo || failed) {
     return (
       <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm font-semibold text-muted-foreground">
         {initial}
@@ -98,7 +97,7 @@ function InvestorAvatar({ name, website }: { name: string; website: string | nul
   }
   return (
     <img
-      src={`https://logo.clearbit.com/${domain}`}
+      src={logo}
       alt=""
       className="w-10 h-10 rounded-full bg-white/5 border border-white/10 object-contain"
       onError={() => setFailed(true)}
@@ -109,11 +108,11 @@ function InvestorAvatar({ name, website }: { name: string; website: string | nul
 function ExpandedInvestors({
   investors,
   leads,
-  fundWebsite,
+  fundLogo,
 }: {
   investors: string[];
   leads: string[];
-  fundWebsite: (n: string) => string | null;
+  fundLogo: (n: string) => string | null;
 }) {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? investors : investors.slice(0, 4);
@@ -124,7 +123,7 @@ function ExpandedInvestors({
         <div className="flex flex-wrap items-start gap-4">
           {visible.map((inv) => (
             <div key={inv} className="flex flex-col items-center gap-1.5 w-20">
-              <InvestorAvatar name={inv} website={fundWebsite(inv)} />
+              <InvestorAvatar name={inv} logo={fundLogo(inv)} />
               <div className="text-[11px] text-muted-foreground text-center leading-tight line-clamp-2">{inv}</div>
             </div>
           ))}
@@ -201,23 +200,23 @@ export default function CompanyDetail() {
   );
 
   const fundsLookup = useQuery({
-    queryKey: ["fund-websites", allInvestorNames.sort().join("|")],
+    queryKey: ["fund-logos", allInvestorNames.sort().join("|")],
     enabled: allInvestorNames.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("funds")
-        .select("name,website")
+        .select("name,logo")
         .in("name", allInvestorNames);
       if (error) throw error;
       const map = new Map<string, string | null>();
-      (data || []).forEach((f: { name: string; website: string | null }) => {
-        map.set(f.name.toLowerCase(), f.website);
+      (data || []).forEach((f: { name: string; logo: string | null }) => {
+        map.set(f.name.toLowerCase(), f.logo);
       });
       return map;
     },
   });
 
-  const fundWebsite = (name: string): string | null => {
+  const fundLogo = (name: string): string | null => {
     const m = fundsLookup.data;
     if (!m) return null;
     return m.get(name.toLowerCase()) ?? null;
@@ -389,7 +388,7 @@ export default function CompanyDetail() {
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <ExpandedInvestors investors={merged} leads={leadArr} fundWebsite={fundWebsite} />
+                        <ExpandedInvestors investors={merged} leads={leadArr} fundLogo={fundLogo} />
                       </div>
                     </div>
                   </div>
