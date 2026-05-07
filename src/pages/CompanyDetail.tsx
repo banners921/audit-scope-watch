@@ -499,54 +499,44 @@ export default function CompanyDetail() {
       {/* AUDIT HISTORY */}
       <div className="as-card p-5">
         <h3 className="text-sm font-semibold text-white mb-3">Audit History</h3>
-        {protoSlugs.length === 0 || audits.isLoading ? (
-          audits.isLoading ? (
-            <div className="h-24 bg-white/[0.03] rounded animate-pulse" />
-          ) : (
-            <div className="text-sm text-muted-foreground py-4">No audit history found</div>
-          )
+        {audits.isLoading ? (
+          <div className="h-24 bg-white/[0.03] rounded animate-pulse" />
         ) : audits.data && audits.data.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="text-left py-2">Protocol</th>
                   <th className="text-left py-2">Firm</th>
                   <th className="text-left py-2">Date</th>
-                  <th className="text-left py-2">Findings</th>
+                  <th className="text-left py-2">Protocol</th>
+                  <th className="text-left py-2">Language</th>
                   <th className="text-right py-2">Report</th>
                 </tr>
               </thead>
               <tbody>
-                {audits.data.map((a, i) => {
-                  const cN = a.findings_critical ?? 0;
-                  const h = a.findings_high ?? 0;
-                  const m = a.findings_medium ?? 0;
-                  const pill = "inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[11px] font-semibold border";
-                  return (
-                    <tr key={i} className="border-t border-white/[0.04]">
-                      <td className="py-2 text-white">{a.protocol_slug}</td>
-                      <td className="py-2 text-white">{a.audit_firm || "—"}</td>
-                      <td className="py-2 font-mono text-xs text-muted-foreground">{a.audit_date || "—"}</td>
-                      <td className="py-2">
-                        {cN + h + m > 0 ? (
-                          <span className="space-x-1">
-                            {cN > 0 && <span className={`${pill} bg-destructive/15 text-destructive border-destructive/30`}>{cN}C</span>}
-                            {h > 0 && <span className={`${pill} bg-warning/15 text-warning border-warning/30`}>{h}H</span>}
-                            {m > 0 && <span className={`${pill} bg-muted text-muted-foreground border-white/10`}>{m}M</span>}
-                          </span>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="py-2 text-right">
-                        {a.report_url ? (
-                          <a href={a.report_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
-                            View <ExternalLink className="w-3 h-3" />
-                          </a>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {audits.data.map((a, i) => (
+                  <tr key={i} className="border-t border-white/[0.04]">
+                    <td className="py-2 font-semibold text-white">{a.audit_firm || "—"}</td>
+                    <td className="py-2 font-mono text-xs text-muted-foreground">
+                      {a.audit_date ? fmtMonthYear(a.audit_date) : "Date unknown"}
+                    </td>
+                    <td className="py-2 text-white">{a.protocol_name || a.protocol_slug || "—"}</td>
+                    <td className="py-2">
+                      {a.smart_contract_language ? (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-white/[0.05] text-xs text-white border border-white/10">
+                          {a.smart_contract_language}
+                        </span>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="py-2 text-right">
+                      {a.report_url ? (
+                        <a href={a.report_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
+                          View <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
