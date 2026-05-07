@@ -273,12 +273,16 @@ export default function CompanyDetail() {
 
   const audits = useQuery({
     queryKey: ["company-audits", slug, protoSlugs.join(",")],
-    enabled: protoSlugs.length > 0,
+    enabled: !!slug,
     queryFn: async () => {
+      const orFilters: string[] = [`company_slug.eq.${slug}`];
+      if (protoSlugs.length > 0) {
+        orFilters.push(`protocol_slug.in.(${protoSlugs.join(",")})`);
+      }
       const { data, error } = await supabase
-        .from("audit_reports")
+        .from("audit_history")
         .select("*")
-        .in("protocol_slug", protoSlugs)
+        .or(orFilters.join(","))
         .order("audit_date", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return (data || []) as AuditReportRow[];
