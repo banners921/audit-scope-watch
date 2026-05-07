@@ -46,16 +46,13 @@ export default function Protocols() {
       let q = supabase
         .from("protocols")
         .select("*", { count: "exact" })
-        .order("security_score", { ascending: false, nullsFirst: false })
+        .order("name", { ascending: true })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
 
       if (debounced) q = q.ilike("name", `%${debounced}%`);
       if (category) q = q.eq("category", category);
-      if (minTvl) q = q.gte("tvl_usd", Number(minTvl));
       if (hasBounty) q = q.eq("has_bug_bounty", true);
       if (hasHack) q = q.eq("has_been_hacked", true);
-      if (language) q = q.eq("smart_contract_language", language);
-      if (activeOnly) q = q.eq("has_active_contracts", true);
       if (auditStatus === "never") q = q.is("last_audit_date", null);
       if (auditStatus === "stale") {
         const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -65,6 +62,8 @@ export default function Protocols() {
         const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
         q = q.gte("last_audit_date", cutoff);
       }
+      // Note: minTvl, language, activeOnly filters disabled — columns no longer exist on protocols
+      void minTvl; void language; void activeOnly;
 
       const { data, error, count } = await q;
       if (error) throw error;
