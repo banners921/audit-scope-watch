@@ -233,6 +233,7 @@ export default function CompanyDetail() {
     new Set(
       (funding.data || []).flatMap((r) => [
         ...parseInvestors(r.lead_investors),
+        ...parseInvestors((r as any).other_investors),
         ...parseInvestors((r as any).all_investors),
       ]),
     ),
