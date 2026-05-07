@@ -286,7 +286,7 @@ export default function ProtocolDetail() {
           )}
         </div>
 
-        <GithubActivityCard githubUrls={p.github} />
+        <GithubActivityCard githubUrls={p.github} protocolName={p.name} />
       </div>
 
       {p.last_audit_date && (
