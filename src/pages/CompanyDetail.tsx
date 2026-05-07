@@ -8,6 +8,8 @@ import type { Company, FundingRound } from "@/lib/companies";
 import { formatTvl, formatPct, normalizeTwitterUrl } from "@/lib/format";
 import { RiskBadge } from "@/components/RiskBadge";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { CompanyGithubActivity } from "@/components/CompanyGithubActivity";
+import { fetchLlamaTvl } from "@/lib/liveData";
 
 type AuditReportRow = {
   protocol_slug: string;
@@ -190,6 +192,18 @@ export default function CompanyDetail() {
 
   const protoSlugs = (protocols.data || []).map((p) => p.slug);
 
+  const liveTvl = useQuery({
+    queryKey: ["company-live-tvl", protoSlugs.join(",")],
+    enabled: protoSlugs.length > 0,
+    queryFn: async () => {
+      const vals = await Promise.all(protoSlugs.map((s) => fetchLlamaTvl(s)));
+      const valid = vals.filter((v): v is number => v != null);
+      return valid.length > 0 ? valid.reduce((a, b) => a + b, 0) : null;
+    },
+  });
+
+  const protocolGithubUrls = (protocols.data || []).flatMap((p) => p.github || []);
+
   const allInvestorNames = Array.from(
     new Set(
       (funding.data || []).flatMap((r) => [
@@ -244,7 +258,7 @@ export default function CompanyDetail() {
 
   // Aggregate signals
   const ps = protocols.data || [];
-  const totalTvl = ps.reduce((s, p) => s + (p.tvl_usd ?? 0), 0);
+  const totalTvl = liveTvl.data ?? null;
   const maxRisk = ps.reduce<number | null>((m, p) => {
     if (p.security_score == null) return m;
     return m == null || p.security_score > m ? p.security_score : m;
@@ -323,7 +337,9 @@ export default function CompanyDetail() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Total TVL</div>
-            <div className="font-mono text-lg font-bold text-teal-400 mt-1">{formatTvl(totalTvl)}</div>
+            <div className="font-mono text-lg font-bold text-teal-400 mt-1">
+              {liveTvl.isLoading ? <span className="text-muted-foreground">…</span> : totalTvl != null ? formatTvl(totalTvl) : "—"}
+            </div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Highest Risk</div>
@@ -400,7 +416,6 @@ export default function CompanyDetail() {
           )}
         </div>
 
-
         {/* DEPLOYMENTS */}
         <div className="as-card p-5">
           <h3 className="text-sm font-semibold text-white mb-3">Deployments</h3>
@@ -434,6 +449,9 @@ export default function CompanyDetail() {
           )}
         </div>
       </div>
+
+      <CompanyGithubActivity githubUrls={protocolGithubUrls} />
+
 
       {/* AUDIT HISTORY */}
       <div className="as-card p-5">

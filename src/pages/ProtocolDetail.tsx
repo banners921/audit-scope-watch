@@ -6,6 +6,8 @@ import { supabase, type Protocol, type SignalAlert } from "@/lib/supabase";
 import { formatTvl, formatPct, riskTier, normalizeTwitterUrl } from "@/lib/format";
 import { SeverityBadge } from "@/components/RiskBadge";
 import { LangBadge } from "@/components/LangBadge";
+import { GithubActivityCard } from "@/components/GithubActivityCard";
+import { fetchLlamaProtocol } from "@/lib/liveData";
 
 type AuditReportRow = {
   protocol_slug: string;
@@ -105,11 +107,17 @@ export default function ProtocolDetail() {
     },
   });
 
+  const llama = useQuery({
+    queryKey: ["llama-protocol", slug],
+    queryFn: () => fetchLlamaProtocol(slug),
+  });
+
   if (proto.isLoading) return <div className="text-muted-foreground">Loading protocol…</div>;
   if (!proto.data) return <div className="text-muted-foreground">Protocol not found.</div>;
 
   const p = proto.data;
-  const change = p.tvl_7d_change ?? null;
+  const liveTvl = llama.data?.tvl ?? null;
+  const change = llama.data?.change24h ?? null;
 
   return (
     <div className="space-y-5 max-w-[1400px]">
@@ -145,27 +153,18 @@ export default function ProtocolDetail() {
 
           <div className="flex items-center gap-8">
             <div>
-              {(p.tvl_usd ?? 0) > 0 ? (
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">TVL</div>
+              {llama.isLoading ? (
+                <div className="h-9 w-32 bg-white/[0.04] rounded animate-pulse mt-1" />
+              ) : liveTvl != null ? (
                 <>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">TVL</div>
-                  <div className="font-mono text-3xl font-bold text-teal-400">{formatTvl(p.tvl_usd)}</div>
-                  {(p.market_cap_usd ?? 0) > 0 && (
-                    <div className="font-mono text-xs text-muted-foreground mt-0.5">Mkt Cap: {formatTvl(p.market_cap_usd)}</div>
-                  )}
+                  <div className="font-mono text-3xl font-bold text-teal-400">{formatTvl(liveTvl)}</div>
                   <div className={`font-mono text-sm ${change == null ? "text-muted-foreground" : change >= 0 ? "text-success" : "text-destructive"}`}>
-                    {formatPct(change)} 7d
+                    {change == null ? "—" : `${formatPct(change)} 24h`}
                   </div>
                 </>
-              ) : (p.market_cap_usd ?? 0) > 0 ? (
-                <>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Mkt Cap</div>
-                  <div className="font-mono text-3xl font-bold text-muted-foreground">{formatTvl(p.market_cap_usd)}</div>
-                </>
               ) : (
-                <>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">TVL</div>
-                  <div className="font-mono text-3xl font-bold text-muted-foreground">—</div>
-                </>
+                <div className="font-mono text-3xl font-bold text-muted-foreground">—</div>
               )}
             </div>
             <ScoreGauge score={p.security_score} />
@@ -287,41 +286,7 @@ export default function ProtocolDetail() {
           )}
         </div>
 
-        {/* GITHUB ACTIVITY */}
-        <div className="as-card p-5">
-          <h3 className="text-sm font-semibold text-white mb-3">GitHub Activity</h3>
-          {p.smart_contract_language == null && p.github_commit_count_30d == null && p.github_last_commit == null ? (
-            <div className="text-sm text-muted-foreground py-4">No GitHub data</div>
-          ) : (
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Language</span>
-                {p.smart_contract_language ? <LangBadge language={p.smart_contract_language} /> : <span className="text-muted-foreground">—</span>}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Commits (30d)</span>
-                <span className="font-mono text-white">
-                  {p.github_commit_count_30d ?? "—"}
-                  {(p.github_commit_count_30d ?? 0) > 0 && <span className="text-success ml-1">↑</span>}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Last commit</span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {p.github_last_commit ? format(new Date(p.github_last_commit), "MMM d, yyyy") : "—"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-white/[0.05]">
-                <span className="text-muted-foreground">Status</span>
-                {p.has_active_contracts && (p.github_commit_count_30d ?? 0) > 0 ? (
-                  <span className="text-xs px-2 py-0.5 rounded-md bg-success/15 text-success border border-success/30 font-medium">Actively building</span>
-                ) : (
-                  <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-muted-foreground border border-white/10 font-medium">Dormant</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <GithubActivityCard githubUrls={p.github} />
       </div>
 
       {p.last_audit_date && (
