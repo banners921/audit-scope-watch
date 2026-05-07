@@ -57,27 +57,37 @@ export function GithubActivityCard({
       }
 
       if (!repo) {
-        const r = await fetch(
-          `https://api.github.com/orgs/${owner}/repos?sort=pushed&per_page=1`,
-          { headers },
-        ).catch(() => null);
-        if (!r || !r.ok) {
-          // try as user
-          const r2 = await fetch(
-            `https://api.github.com/users/${owner}/repos?sort=pushed&per_page=1`,
+        const fetchRepos = async (kind: "orgs" | "users") => {
+          const r = await fetch(
+            `https://api.github.com/${kind}/${owner}/repos?sort=stars&per_page=20`,
             { headers },
           ).catch(() => null);
-          if (!r2 || !r2.ok) return null;
-          const arr = await r2.json();
-          if (!Array.isArray(arr) || arr.length === 0) return null;
-          repo = arr[0].name;
-          owner = arr[0].owner?.login || owner;
-        } else {
+          if (!r || !r.ok) return null;
           const arr = await r.json();
-          if (!Array.isArray(arr) || arr.length === 0) return null;
-          repo = arr[0].name;
-          owner = arr[0].owner?.login || owner;
-        }
+          return Array.isArray(arr) ? arr : null;
+        };
+        let arr = await fetchRepos("orgs");
+        if (!arr) arr = await fetchRepos("users");
+        if (!arr || arr.length === 0) return null;
+
+        const PREFER = ["contract", "core", "protocol", "smart", "token", "vault", "pool", "dex", "swap", "lending", "staking"];
+        const EXCLUDE = ["demo", "docs", "documentation", "example", "test", "website", "landing", "frontend", "ui"];
+        const nameOf = (x: any) => String(x?.name || "").toLowerCase();
+        const filtered = arr.filter((x: any) => {
+          const n = nameOf(x);
+          return !EXCLUDE.some((w) => n.includes(w));
+        });
+        const pool = filtered.length > 0 ? filtered : arr;
+        const sortedByStars = [...pool].sort(
+          (a: any, b: any) => (b.stargazers_count ?? 0) - (a.stargazers_count ?? 0),
+        );
+        const preferred = sortedByStars.find((x: any) =>
+          PREFER.some((w) => nameOf(x).includes(w)),
+        );
+        const chosen = preferred || sortedByStars[0];
+        if (!chosen) return null;
+        repo = chosen.name;
+        owner = chosen.owner?.login || owner;
       }
 
       const base = `https://api.github.com/repos/${owner}/${repo}`;
