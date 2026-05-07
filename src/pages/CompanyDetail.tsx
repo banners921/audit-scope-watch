@@ -337,7 +337,9 @@ export default function CompanyDetail() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Total TVL</div>
-            <div className="font-mono text-lg font-bold text-teal-400 mt-1">{formatTvl(totalTvl)}</div>
+            <div className="font-mono text-lg font-bold text-teal-400 mt-1">
+              {liveTvl.isLoading ? <span className="text-muted-foreground">…</span> : totalTvl != null ? formatTvl(totalTvl) : "—"}
+            </div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Highest Risk</div>
