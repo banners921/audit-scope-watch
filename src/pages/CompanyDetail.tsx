@@ -13,7 +13,9 @@ import { GithubActivityCard } from "@/components/GithubActivityCard";
 import { fetchLlamaTvl } from "@/lib/liveData";
 
 type AuditReportRow = {
-  protocol_slug: string;
+  protocol_slug: string | null;
+  company_slug: string | null;
+  protocol_name: string | null;
   audit_firm: string | null;
   audit_date: string | null;
   report_url: string | null;
@@ -21,6 +23,7 @@ type AuditReportRow = {
   findings_high: number | null;
   findings_medium: number | null;
   finding_count: number | null;
+  smart_contract_language: string | null;
 };
 
 function fmtDate(d: string | null | undefined) {
