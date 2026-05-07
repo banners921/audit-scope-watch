@@ -288,7 +288,7 @@ export default function CompanyDetail() {
                 {c.industry && <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-muted-foreground border border-white/10">{c.industry}</span>}
                 {c.company_type && <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-muted-foreground border border-white/10">{c.company_type}</span>}
               </div>
-              {c.description && <p className="text-sm text-muted-foreground mt-3 max-w-3xl">{c.description}</p>}
+              {c.description && <CompanyDescription text={c.description} />}
               <div className="flex items-center gap-3 mt-3">
                 {(() => {
                   const gh = (c as unknown as { github?: string | null }).github || null;
