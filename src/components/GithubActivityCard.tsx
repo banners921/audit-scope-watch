@@ -23,18 +23,38 @@ function parseGithubUrl(url: string | null | undefined): { owner: string; repo: 
   }
 }
 
-export function GithubActivityCard({ githubUrls }: { githubUrls: string[] | null | undefined }) {
+export function GithubActivityCard({
+  githubUrls,
+  protocolName,
+}: {
+  githubUrls: string[] | null | undefined;
+  protocolName?: string | null;
+}) {
   const url = githubUrls?.[0] || null;
   const parsed = parseGithubUrl(url);
 
   const q = useQuery({
-    queryKey: ["gh-protocol", parsed?.owner, parsed?.repo],
-    enabled: !!parsed,
+    queryKey: ["gh-protocol", parsed?.owner, parsed?.repo, protocolName],
+    enabled: !!parsed || !!protocolName,
     queryFn: async () => {
-      if (!parsed) return null;
       const headers = GH_HEADERS;
-      let owner = parsed.owner;
-      let repo = parsed.repo;
+      let owner: string | null = parsed?.owner ?? null;
+      let repo: string | null = parsed?.repo ?? null;
+
+      if (!owner) {
+        if (!protocolName) return null;
+        const sr = await fetch(
+          `https://api.github.com/search/repositories?q=${encodeURIComponent(protocolName)}+in:name&sort=stars&per_page=1`,
+          { headers },
+        ).catch(() => null);
+        if (!sr || !sr.ok) return null;
+        const sd = await sr.json();
+        const item = sd?.items?.[0];
+        if (!item) return null;
+        owner = item.owner?.login;
+        repo = item.name;
+        if (!owner || !repo) return null;
+      }
 
       if (!repo) {
         const r = await fetch(
