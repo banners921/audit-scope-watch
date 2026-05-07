@@ -108,11 +108,11 @@ function InvestorAvatar({ name, logo }: { name: string; logo: string | null | un
 function ExpandedInvestors({
   investors,
   leads,
-  fundWebsite,
+  fundLogo,
 }: {
   investors: string[];
   leads: string[];
-  fundWebsite: (n: string) => string | null;
+  fundLogo: (n: string) => string | null;
 }) {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? investors : investors.slice(0, 4);
@@ -123,7 +123,7 @@ function ExpandedInvestors({
         <div className="flex flex-wrap items-start gap-4">
           {visible.map((inv) => (
             <div key={inv} className="flex flex-col items-center gap-1.5 w-20">
-              <InvestorAvatar name={inv} website={fundWebsite(inv)} />
+              <InvestorAvatar name={inv} logo={fundLogo(inv)} />
               <div className="text-[11px] text-muted-foreground text-center leading-tight line-clamp-2">{inv}</div>
             </div>
           ))}
