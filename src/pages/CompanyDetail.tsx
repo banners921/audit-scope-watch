@@ -192,6 +192,18 @@ export default function CompanyDetail() {
 
   const protoSlugs = (protocols.data || []).map((p) => p.slug);
 
+  const liveTvl = useQuery({
+    queryKey: ["company-live-tvl", protoSlugs.join(",")],
+    enabled: protoSlugs.length > 0,
+    queryFn: async () => {
+      const vals = await Promise.all(protoSlugs.map((s) => fetchLlamaTvl(s)));
+      const valid = vals.filter((v): v is number => v != null);
+      return valid.length > 0 ? valid.reduce((a, b) => a + b, 0) : null;
+    },
+  });
+
+  const protocolGithubUrls = (protocols.data || []).flatMap((p) => p.github || []);
+
   const allInvestorNames = Array.from(
     new Set(
       (funding.data || []).flatMap((r) => [
