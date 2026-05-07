@@ -7,45 +7,45 @@
 @layer base {
   :root {
     /* AuditScope dark-only design tokens (HSL) */
-    --background: 220 28% 6%;       /* #080B14 */
+    --background: 0 0% 4%;           /* #0A0A0A */
     --foreground: 0 0% 100%;
-    --surface: 222 35% 9%;          /* #0F1420 cards */
-    --surface-2: 222 30% 12%;
-    --border: 0 0% 100% / 0.06;
-    --muted: 222 25% 14%;
+    --surface: 0 0% 7%;              /* #111111 cards */
+    --surface-2: 0 0% 9%;
+    --border: 0 0% 12%;              /* #1F1F1F */
+    --muted: 0 0% 10%;
     --muted-foreground: 218 13% 67%; /* #A0A8B8 */
-    --card: 222 35% 9%;
+    --card: 0 0% 7%;                 /* #111111 */
     --card-foreground: 0 0% 100%;
-    --popover: 222 35% 9%;
+    --popover: 0 0% 7%;
     --popover-foreground: 0 0% 100%;
     --primary: 187 85% 53%;          /* #22D3EE teal */
-    --primary-foreground: 220 28% 6%;
+    --primary-foreground: 0 0% 4%;
     --secondary: 221 83% 53%;        /* #2563EB blue */
     --secondary-foreground: 0 0% 100%;
     --accent: 187 85% 53%;
-    --accent-foreground: 220 28% 6%;
+    --accent-foreground: 0 0% 4%;
     --destructive: 0 84% 60%;        /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
     --warning: 38 92% 50%;           /* #F59E0B */
     --success: 160 84% 39%;          /* #10B981 */
-    --input: 222 30% 14%;
+    --input: 0 0% 10%;
     --ring: 187 85% 53%;
     --radius: 1rem;
 
-    --sidebar-background: 222 35% 9%;
+    --sidebar-background: 0 0% 4%;   /* #0A0A0A */
     --sidebar-foreground: 218 13% 80%;
     --sidebar-primary: 187 85% 53%;
-    --sidebar-primary-foreground: 220 28% 6%;
-    --sidebar-accent: 222 30% 14%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 9%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 100% / 0.06;
+    --sidebar-border: 0 0% 12%;
     --sidebar-ring: 187 85% 53%;
   }
 }
 
 @layer base {
   * {
-    border-color: hsl(255 255 255 / 0.06);
+    border-color: hsl(var(--border));
   }
   html, body, #root {
     @apply min-h-screen bg-background text-foreground;
