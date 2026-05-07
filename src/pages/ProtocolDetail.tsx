@@ -107,11 +107,17 @@ export default function ProtocolDetail() {
     },
   });
 
+  const llama = useQuery({
+    queryKey: ["llama-protocol", slug],
+    queryFn: () => fetchLlamaProtocol(slug),
+  });
+
   if (proto.isLoading) return <div className="text-muted-foreground">Loading protocol…</div>;
   if (!proto.data) return <div className="text-muted-foreground">Protocol not found.</div>;
 
   const p = proto.data;
-  const change = p.tvl_7d_change ?? null;
+  const liveTvl = llama.data?.tvl ?? null;
+  const change = llama.data?.change24h ?? null;
 
   return (
     <div className="space-y-5 max-w-[1400px]">
