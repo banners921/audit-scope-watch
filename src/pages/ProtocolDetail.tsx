@@ -6,6 +6,8 @@ import { supabase, type Protocol, type SignalAlert } from "@/lib/supabase";
 import { formatTvl, formatPct, riskTier, normalizeTwitterUrl } from "@/lib/format";
 import { SeverityBadge } from "@/components/RiskBadge";
 import { LangBadge } from "@/components/LangBadge";
+import { GithubActivityCard } from "@/components/GithubActivityCard";
+import { fetchLlamaProtocol } from "@/lib/liveData";
 
 type AuditReportRow = {
   protocol_slug: string;
