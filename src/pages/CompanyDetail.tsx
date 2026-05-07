@@ -414,7 +414,9 @@ export default function CompanyDetail() {
           ) : (
             <div className="text-sm text-muted-foreground py-4">No funding rounds recorded</div>
           )}
-        </div>
+      </div>
+
+      <CompanyGithubActivity githubUrls={protocolGithubUrls} />
 
 
         {/* DEPLOYMENTS */}
