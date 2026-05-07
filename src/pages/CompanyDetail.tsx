@@ -200,23 +200,23 @@ export default function CompanyDetail() {
   );
 
   const fundsLookup = useQuery({
-    queryKey: ["fund-websites", allInvestorNames.sort().join("|")],
+    queryKey: ["fund-logos", allInvestorNames.sort().join("|")],
     enabled: allInvestorNames.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("funds")
-        .select("name,website")
+        .select("name,logo")
         .in("name", allInvestorNames);
       if (error) throw error;
       const map = new Map<string, string | null>();
-      (data || []).forEach((f: { name: string; website: string | null }) => {
-        map.set(f.name.toLowerCase(), f.website);
+      (data || []).forEach((f: { name: string; logo: string | null }) => {
+        map.set(f.name.toLowerCase(), f.logo);
       });
       return map;
     },
   });
 
-  const fundWebsite = (name: string): string | null => {
+  const fundLogo = (name: string): string | null => {
     const m = fundsLookup.data;
     if (!m) return null;
     return m.get(name.toLowerCase()) ?? null;
