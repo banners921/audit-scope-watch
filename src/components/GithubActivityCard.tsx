@@ -32,7 +32,7 @@ export function GithubActivityCard({ githubUrls }: { githubUrls: string[] | null
     enabled: !!parsed,
     queryFn: async () => {
       if (!parsed) return null;
-      const headers = ghHeaders();
+      const headers = GH_HEADERS;
       let owner = parsed.owner;
       let repo = parsed.repo;
 
