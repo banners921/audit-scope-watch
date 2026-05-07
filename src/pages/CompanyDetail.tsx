@@ -398,11 +398,11 @@ export default function CompanyDetail() {
           ) : funding.data && funding.data.length > 0 ? (
             <div className="space-y-2">
               {funding.data.map((r) => {
+                const others = (r as any).other_investors;
                 const all = (r as any).all_investors;
                 const isOpen = expandedRound === r.id;
                 const leadArr = parseInvestors(r.lead_investors);
-                const allArr = parseInvestors(all);
-                const merged = Array.from(new Set([...leadArr, ...allArr]));
+                const otherArr = parseInvestors(others || all).filter((n) => !leadArr.includes(n));
                 return (
                   <div
                     key={r.id}
@@ -429,7 +429,7 @@ export default function CompanyDetail() {
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <ExpandedInvestors investors={merged} leads={leadArr} fundLogo={fundLogo} />
+                        <ExpandedInvestors leads={leadArr} others={otherArr} fundLogo={fundLogo} />
                       </div>
                     </div>
                   </div>
