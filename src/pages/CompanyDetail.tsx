@@ -9,6 +9,7 @@ import { formatTvl, formatPct, normalizeTwitterUrl } from "@/lib/format";
 import { RiskBadge } from "@/components/RiskBadge";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { CompanyGithubActivity } from "@/components/CompanyGithubActivity";
+import { GithubActivityCard } from "@/components/GithubActivityCard";
 import { fetchLlamaTvl } from "@/lib/liveData";
 
 type AuditReportRow = {
@@ -227,7 +228,12 @@ export default function CompanyDetail() {
     },
   });
 
-  const protocolGithubUrls = (protocols.data || []).flatMap((p) => p.github || []);
+  const protocolGithubUrls = (protocols.data || [])
+    .flatMap((p) => (Array.isArray(p.github) ? p.github : []))
+    .filter((u): u is string => typeof u === "string" && u.length > 0);
+  // eslint-disable-next-line no-console
+  console.log("[CompanyDetail] collected github URLs for", slug, protocolGithubUrls);
+  const firstGithubUrl = protocolGithubUrls[0] || null;
 
   const allInvestorNames = Array.from(
     new Set(
@@ -477,6 +483,10 @@ export default function CompanyDetail() {
       </div>
 
       <CompanyGithubActivity githubUrls={protocolGithubUrls} />
+
+      {firstGithubUrl && (
+        <GithubActivityCard githubUrls={[firstGithubUrl]} protocolName={c.name} />
+      )}
 
 
       {/* AUDIT HISTORY */}
