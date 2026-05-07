@@ -41,15 +41,29 @@ export function GithubActivityCard({
       let owner: string | null = parsed?.owner ?? null;
       let repo: string | null = parsed?.repo ?? null;
 
+      const PREFER = ["contract", "core", "protocol", "smart", "token", "vault", "pool", "dex", "swap", "lending", "staking"];
+      const EXCLUDE = ["demo", "docs", "documentation", "example", "test", "website", "landing", "frontend", "ui", "invoice"];
+      const pickBest = (arr: any[]): any | null => {
+        if (!Array.isArray(arr) || arr.length === 0) return null;
+        const nameOf = (x: any) => String(x?.name || "").toLowerCase();
+        const filtered = arr.filter((x: any) => !EXCLUDE.some((w) => nameOf(x).includes(w)));
+        const pool = filtered.length > 0 ? filtered : arr;
+        const sortedByStars = [...pool].sort(
+          (a: any, b: any) => (b.stargazers_count ?? 0) - (a.stargazers_count ?? 0),
+        );
+        const preferred = sortedByStars.find((x: any) => PREFER.some((w) => nameOf(x).includes(w)));
+        return preferred || sortedByStars[0] || null;
+      };
+
       if (!owner) {
         if (!protocolName) return null;
         const sr = await fetch(
-          `https://api.github.com/search/repositories?q=${encodeURIComponent(protocolName)}+in:name&sort=stars&per_page=1`,
+          `https://api.github.com/search/repositories?q=${encodeURIComponent(protocolName)}+in:name&sort=stars&per_page=20`,
           { headers },
         ).catch(() => null);
         if (!sr || !sr.ok) return null;
         const sd = await sr.json();
-        const item = sd?.items?.[0];
+        const item = pickBest(sd?.items || []);
         if (!item) return null;
         owner = item.owner?.login;
         repo = item.name;
@@ -68,23 +82,7 @@ export function GithubActivityCard({
         };
         let arr = await fetchRepos("orgs");
         if (!arr) arr = await fetchRepos("users");
-        if (!arr || arr.length === 0) return null;
-
-        const PREFER = ["contract", "core", "protocol", "smart", "token", "vault", "pool", "dex", "swap", "lending", "staking"];
-        const EXCLUDE = ["demo", "docs", "documentation", "example", "test", "website", "landing", "frontend", "ui"];
-        const nameOf = (x: any) => String(x?.name || "").toLowerCase();
-        const filtered = arr.filter((x: any) => {
-          const n = nameOf(x);
-          return !EXCLUDE.some((w) => n.includes(w));
-        });
-        const pool = filtered.length > 0 ? filtered : arr;
-        const sortedByStars = [...pool].sort(
-          (a: any, b: any) => (b.stargazers_count ?? 0) - (a.stargazers_count ?? 0),
-        );
-        const preferred = sortedByStars.find((x: any) =>
-          PREFER.some((w) => nameOf(x).includes(w)),
-        );
-        const chosen = preferred || sortedByStars[0];
+        const chosen = pickBest(arr || []);
         if (!chosen) return null;
         repo = chosen.name;
         owner = chosen.owner?.login || owner;
