@@ -153,27 +153,18 @@ export default function ProtocolDetail() {
 
           <div className="flex items-center gap-8">
             <div>
-              {(p.tvl_usd ?? 0) > 0 ? (
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">TVL</div>
+              {llama.isLoading ? (
+                <div className="h-9 w-32 bg-white/[0.04] rounded animate-pulse mt-1" />
+              ) : liveTvl != null ? (
                 <>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">TVL</div>
-                  <div className="font-mono text-3xl font-bold text-teal-400">{formatTvl(p.tvl_usd)}</div>
-                  {(p.market_cap_usd ?? 0) > 0 && (
-                    <div className="font-mono text-xs text-muted-foreground mt-0.5">Mkt Cap: {formatTvl(p.market_cap_usd)}</div>
-                  )}
+                  <div className="font-mono text-3xl font-bold text-teal-400">{formatTvl(liveTvl)}</div>
                   <div className={`font-mono text-sm ${change == null ? "text-muted-foreground" : change >= 0 ? "text-success" : "text-destructive"}`}>
-                    {formatPct(change)} 7d
+                    {change == null ? "—" : `${formatPct(change)} 24h`}
                   </div>
                 </>
-              ) : (p.market_cap_usd ?? 0) > 0 ? (
-                <>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Mkt Cap</div>
-                  <div className="font-mono text-3xl font-bold text-muted-foreground">{formatTvl(p.market_cap_usd)}</div>
-                </>
               ) : (
-                <>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">TVL</div>
-                  <div className="font-mono text-3xl font-bold text-muted-foreground">—</div>
-                </>
+                <div className="font-mono text-3xl font-bold text-muted-foreground">—</div>
               )}
             </div>
             <ScoreGauge score={p.security_score} />
