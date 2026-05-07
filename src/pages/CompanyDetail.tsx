@@ -108,20 +108,21 @@ function InvestorAvatar({ name, logo }: { name: string; logo: string | null | un
 }
 
 function ExpandedInvestors({
-  investors,
   leads,
+  others,
   fundLogo,
 }: {
-  investors: string[];
   leads: string[];
+  others: string[];
   fundLogo: (n: string) => string | null;
 }) {
+  const all = Array.from(new Set([...leads, ...others]));
   const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? investors : investors.slice(0, 4);
-  const hiddenCount = investors.length - visible.length;
+  const visible = showAll ? all : all.slice(0, 4);
+  const hiddenCount = all.length - visible.length;
   return (
     <div className="bg-white/[0.04] border-l-2 border-teal-400 px-4 py-4 space-y-3">
-      {investors.length > 0 && (
+      {all.length > 0 && (
         <div className="flex flex-wrap items-start gap-4">
           {visible.map((inv) => (
             <div key={inv} className="flex flex-col items-center gap-1.5 w-20">
@@ -143,6 +144,12 @@ function ExpandedInvestors({
       {leads.length > 0 && (
         <div className="text-xs text-muted-foreground">
           Led by <span className="text-teal-400 font-medium">{leads.join(", ")}</span>
+        </div>
+      )}
+      {others.length > 0 && (
+        <div className="text-xs text-muted-foreground">
+          <span className="uppercase tracking-wider">Other Investors:</span>{" "}
+          <span className="text-white">{others.join(", ")}</span>
         </div>
       )}
     </div>
