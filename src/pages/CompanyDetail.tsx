@@ -182,7 +182,7 @@ export default function CompanyDetail() {
         .from("protocols")
         .select("*")
         .eq("parent_slug", slug)
-        .order("tvl_usd", { ascending: false, nullsFirst: false });
+        .order("name", { ascending: true });
       if (error) throw error;
       return (data || []) as Protocol[];
     },
