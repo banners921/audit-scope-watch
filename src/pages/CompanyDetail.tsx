@@ -85,11 +85,10 @@ function roundPillColor(t: string | null | undefined): string {
   return ROUND_COLORS[k] || "bg-white/5 text-white border-white/10";
 }
 
-function InvestorAvatar({ name, website }: { name: string; website: string | null | undefined }) {
+function InvestorAvatar({ name, logo }: { name: string; logo: string | null | undefined }) {
   const [failed, setFailed] = useState(false);
-  const domain = extractDomain(website);
   const initial = (name?.trim()?.[0] || "?").toUpperCase();
-  if (!domain || failed) {
+  if (!logo || failed) {
     return (
       <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm font-semibold text-muted-foreground">
         {initial}
@@ -98,7 +97,7 @@ function InvestorAvatar({ name, website }: { name: string; website: string | nul
   }
   return (
     <img
-      src={`https://logo.clearbit.com/${domain}`}
+      src={logo}
       alt=""
       className="w-10 h-10 rounded-full bg-white/5 border border-white/10 object-contain"
       onError={() => setFailed(true)}
