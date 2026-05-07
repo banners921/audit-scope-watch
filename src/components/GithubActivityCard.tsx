@@ -103,7 +103,7 @@ export function GithubActivityCard({
     },
   });
 
-  if (!parsed) return null;
+  if (!parsed && !protocolName) return null;
   if (q.isLoading) {
     return (
       <div className="as-card p-5">
