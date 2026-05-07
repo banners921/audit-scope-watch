@@ -8,6 +8,8 @@ import type { Company, FundingRound } from "@/lib/companies";
 import { formatTvl, formatPct, normalizeTwitterUrl } from "@/lib/format";
 import { RiskBadge } from "@/components/RiskBadge";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { CompanyGithubActivity } from "@/components/CompanyGithubActivity";
+import { fetchLlamaTvl } from "@/lib/liveData";
 
 type AuditReportRow = {
   protocol_slug: string;
