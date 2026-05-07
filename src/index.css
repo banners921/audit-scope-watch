@@ -45,7 +45,7 @@
 
 @layer base {
   * {
-    border-color: hsl(255 255 255 / 0.06);
+    border-color: hsl(var(--border));
   }
   html, body, #root {
     @apply min-h-screen bg-background text-foreground;
