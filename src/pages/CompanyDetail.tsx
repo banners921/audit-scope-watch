@@ -258,7 +258,7 @@ export default function CompanyDetail() {
 
   // Aggregate signals
   const ps = protocols.data || [];
-  const totalTvl = ps.reduce((s, p) => s + (p.tvl_usd ?? 0), 0);
+  const totalTvl = liveTvl.data ?? null;
   const maxRisk = ps.reduce<number | null>((m, p) => {
     if (p.security_score == null) return m;
     return m == null || p.security_score > m ? p.security_score : m;
