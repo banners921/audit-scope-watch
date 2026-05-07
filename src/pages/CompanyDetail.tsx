@@ -388,7 +388,7 @@ export default function CompanyDetail() {
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <ExpandedInvestors investors={merged} leads={leadArr} fundWebsite={fundWebsite} />
+                        <ExpandedInvestors investors={merged} leads={leadArr} fundLogo={fundLogo} />
                       </div>
                     </div>
                   </div>
