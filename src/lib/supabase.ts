@@ -37,6 +37,7 @@ export type Protocol = {
   twitter: string | null;
   github: string[] | null;
   description: string | null;
+  parent_slug: string | null;
 };
 
 export type AuditRecord = {

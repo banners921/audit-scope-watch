@@ -11,6 +11,7 @@ import { LangBadge } from "@/components/LangBadge";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { CompanyGithubActivity } from "@/components/CompanyGithubActivity";
 import { GithubActivityCard } from "@/components/GithubActivityCard";
+import { BugBountyList } from "@/components/BugBountyList";
 import { fetchLlamaTvl } from "@/lib/liveData";
 
 type AuditReportRow = {
@@ -320,7 +321,7 @@ export default function CompanyDetail() {
     return !m || p.last_audit_date > m ? p.last_audit_date : m;
   }, null);
   const anyHacked = ps.some((p) => p.has_been_hacked);
-  const anyBounty = ps.some((p) => p.has_bug_bounty);
+  
 
   return (
     <div className="space-y-5 max-w-[1400px]">
@@ -386,7 +387,7 @@ export default function CompanyDetail() {
       {/* SECURITY SIGNALS */}
       <div className="as-card p-5">
         <h3 className="text-sm font-semibold text-white mb-4">Security Signals</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Total TVL</div>
             <div className="font-mono text-lg font-bold text-teal-400 mt-1">
@@ -405,12 +406,6 @@ export default function CompanyDetail() {
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Any Hacked</div>
             <div className="mt-1 text-sm">
               {anyHacked ? <span className="text-destructive font-medium">Yes</span> : <span className="text-success font-medium">No</span>}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Bug Bounty</div>
-            <div className="mt-1 text-sm">
-              {anyBounty ? <span className="text-success font-medium">Yes</span> : <span className="text-muted-foreground font-medium">No</span>}
             </div>
           </div>
         </div>
@@ -509,6 +504,12 @@ export default function CompanyDetail() {
       {firstGithubUrl && (
         <GithubActivityCard githubUrls={[firstGithubUrl]} protocolName={c.name} />
       )}
+
+      {/* BUG BOUNTY */}
+      <div className="as-card p-5">
+        <h3 className="text-sm font-semibold text-white mb-3">Bug Bounty</h3>
+        <BugBountyList companySlug={slug} />
+      </div>
 
 
       {/* AUDIT HISTORY */}
