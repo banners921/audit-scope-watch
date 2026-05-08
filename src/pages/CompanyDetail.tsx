@@ -467,6 +467,7 @@ export default function CompanyDetail() {
                   <tr>
                     <th className="text-left py-2">Protocol</th>
                     <th className="text-left py-2">Category</th>
+                    <th className="text-left py-2">Language</th>
                     <th className="text-left py-2">Chains</th>
                     <th className="text-left py-2">Last Audit</th>
                   </tr>
@@ -476,6 +477,7 @@ export default function CompanyDetail() {
                     <tr key={p.slug} onClick={() => navigate(`/protocols/${p.slug}`)} className="border-t border-white/[0.04] hover:bg-white/[0.02] cursor-pointer">
                       <td className="py-2 text-white font-medium">{p.name}</td>
                       <td className="py-2 text-muted-foreground">{p.category || "—"}</td>
+                      <td className="py-2"><LangBadge language={p.smart_contract_language} /></td>
                       <td className="py-2 text-muted-foreground text-xs">{(p.chains && p.chains.length > 0) ? p.chains.slice(0, 4).join(", ") + (p.chains.length > 4 ? ` +${p.chains.length - 4}` : "") : "—"}</td>
                       <td className="py-2 font-mono text-xs text-muted-foreground">{p.last_audit_date || "—"}</td>
                     </tr>
