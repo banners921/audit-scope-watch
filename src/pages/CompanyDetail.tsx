@@ -235,9 +235,21 @@ export default function CompanyDetail() {
   const protocolGithubUrls = (protocols.data || [])
     .flatMap((p) => (Array.isArray(p.github) ? p.github : []))
     .filter((u): u is string => typeof u === "string" && u.length > 0);
+  // Extract first valid org name from any child protocol's github URL
+  const firstOrg = (() => {
+    for (const u of protocolGithubUrls) {
+      try {
+        const parsed = new URL(u);
+        if (!/github\.com$/i.test(parsed.hostname)) continue;
+        const parts = parsed.pathname.split("/").filter(Boolean);
+        if (parts[0]) return parts[0];
+      } catch { /* ignore */ }
+    }
+    return null;
+  })();
   // eslint-disable-next-line no-console
-  console.log("[CompanyDetail] collected github URLs for", slug, protocolGithubUrls);
-  const firstGithubUrl = protocolGithubUrls[0] || null;
+  console.log("[CompanyDetail] github URLs", slug, protocolGithubUrls, "→ org:", firstOrg);
+  const firstGithubUrl = firstOrg ? `https://github.com/${firstOrg}` : null;
 
   const allInvestorNames = Array.from(
     new Set(
