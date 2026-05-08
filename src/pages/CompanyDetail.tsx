@@ -505,6 +505,12 @@ export default function CompanyDetail() {
         <GithubActivityCard githubUrls={[firstGithubUrl]} protocolName={c.name} />
       )}
 
+      {/* BUG BOUNTY */}
+      <div className="as-card p-5">
+        <h3 className="text-sm font-semibold text-white mb-3">Bug Bounty</h3>
+        <BugBountyList companySlug={slug} />
+      </div>
+
 
       {/* AUDIT HISTORY */}
       <div className="as-card p-5">
