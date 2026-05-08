@@ -7,6 +7,7 @@ import { supabase, type Protocol } from "@/lib/supabase";
 import type { Company, FundingRound } from "@/lib/companies";
 import { formatTvl, formatPct, normalizeTwitterUrl } from "@/lib/format";
 import { RiskBadge } from "@/components/RiskBadge";
+import { LangBadge } from "@/components/LangBadge";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { CompanyGithubActivity } from "@/components/CompanyGithubActivity";
 import { GithubActivityCard } from "@/components/GithubActivityCard";
