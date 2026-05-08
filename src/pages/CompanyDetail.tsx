@@ -407,12 +407,6 @@ export default function CompanyDetail() {
               {anyHacked ? <span className="text-destructive font-medium">Yes</span> : <span className="text-success font-medium">No</span>}
             </div>
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Bug Bounty</div>
-            <div className="mt-1 text-sm">
-              {anyBounty ? <span className="text-success font-medium">Yes</span> : <span className="text-muted-foreground font-medium">No</span>}
-            </div>
-          </div>
         </div>
       </div>
 
