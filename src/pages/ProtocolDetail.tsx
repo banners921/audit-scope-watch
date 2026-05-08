@@ -7,6 +7,7 @@ import { formatTvl, formatPct, riskTier, normalizeTwitterUrl } from "@/lib/forma
 import { SeverityBadge } from "@/components/RiskBadge";
 import { LangBadge } from "@/components/LangBadge";
 import { GithubActivityCard } from "@/components/GithubActivityCard";
+import { BugBountyList } from "@/components/BugBountyList";
 import { fetchLlamaProtocol } from "@/lib/liveData";
 
 type AuditReportRow = {
