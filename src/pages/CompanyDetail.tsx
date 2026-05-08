@@ -320,7 +320,7 @@ export default function CompanyDetail() {
     return !m || p.last_audit_date > m ? p.last_audit_date : m;
   }, null);
   const anyHacked = ps.some((p) => p.has_been_hacked);
-  const anyBounty = ps.some((p) => p.has_bug_bounty);
+  void ps;
 
   return (
     <div className="space-y-5 max-w-[1400px]">
