@@ -62,8 +62,15 @@ export default function Protocols() {
         const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
         q = q.gte("last_audit_date", cutoff);
       }
-      // Note: minTvl, language, activeOnly filters disabled — columns no longer exist on protocols
-      void minTvl; void language; void activeOnly;
+      if (language) {
+        if (language === "Other") {
+          q = q.not("smart_contract_language", "in", "(Solidity,Rust,Move,Cairo,CosmWasm,Go,Haskell)");
+        } else {
+          q = q.eq("smart_contract_language", language);
+        }
+      }
+      // Note: minTvl, activeOnly filters disabled — columns no longer exist on protocols
+      void minTvl; void activeOnly;
 
       const { data, error, count } = await q;
       if (error) throw error;
