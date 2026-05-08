@@ -11,6 +11,7 @@ import { LangBadge } from "@/components/LangBadge";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { CompanyGithubActivity } from "@/components/CompanyGithubActivity";
 import { GithubActivityCard } from "@/components/GithubActivityCard";
+import { BugBountyList } from "@/components/BugBountyList";
 import { fetchLlamaTvl } from "@/lib/liveData";
 
 type AuditReportRow = {
