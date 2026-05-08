@@ -116,13 +116,15 @@ export default function Protocols() {
             <option value="recent">Recent (≤1yr)</option>
           </select>
           <select value={language} onChange={(e) => setLanguage(e.target.value)} className="as-input">
-            <option value="">All languages</option>
+            <option value="">All Languages</option>
             <option value="Solidity">Solidity</option>
             <option value="Rust">Rust</option>
             <option value="Move">Move</option>
             <option value="Cairo">Cairo</option>
+            <option value="CosmWasm">CosmWasm</option>
             <option value="Go">Go</option>
-            <option value="Vyper">Vyper</option>
+            <option value="Haskell">Haskell</option>
+            <option value="Other">Other</option>
           </select>
         </div>
         <div className="flex flex-wrap gap-3">
