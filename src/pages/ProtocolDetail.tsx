@@ -245,22 +245,7 @@ export default function ProtocolDetail() {
         {/* BUG BOUNTY */}
         <div className="as-card p-5">
           <h3 className="text-sm font-semibold text-white mb-3">Bug Bounty</h3>
-          {p.has_bug_bounty ? (
-            <div className="bg-primary/10 border border-primary/30 text-primary rounded-lg p-4">
-              <div className="text-sm font-semibold font-mono">
-                Active — Max {p.bug_bounty_amount ? formatTvl(p.bug_bounty_amount) : "—"}
-              </div>
-              {p.bug_bounty_url && (
-                <a href={p.bug_bounty_url} target="_blank" rel="noreferrer" className="text-xs hover:underline inline-flex items-center gap-1 mt-2">
-                  Program details <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
-            </div>
-          ) : (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-4 text-sm font-medium">
-              No bug bounty program
-            </div>
-          )}
+          <BugBountyList protocolSlug={p.slug} companySlug={p.parent_slug} />
         </div>
 
         {/* RECENT SIGNALS */}
