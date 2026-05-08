@@ -41,18 +41,19 @@ export function GithubActivityCard({
       let owner: string | null = parsed?.owner ?? null;
       let repo: string | null = parsed?.repo ?? null;
 
-      const PREFER = ["contract", "core", "protocol", "smart", "token", "vault", "pool", "dex", "swap", "lending", "staking"];
-      const EXCLUDE = ["demo", "docs", "documentation", "example", "test", "website", "landing", "frontend", "ui", "invoice"];
+      const PREFER = ["contract", "core", "protocol", "smart", "token", "vault", "pool", "dex", "swap", "lending", "staking", "program"];
+      const EXCLUDE = ["demo", "docs", "documentation", "example", "test", "website", "landing", "frontend", "ui", "invoice", "sdk"];
       const pickBest = (arr: any[]): any | null => {
         if (!Array.isArray(arr) || arr.length === 0) return null;
         const nameOf = (x: any) => String(x?.name || "").toLowerCase();
         const filtered = arr.filter((x: any) => !EXCLUDE.some((w) => nameOf(x).includes(w)));
         const pool = filtered.length > 0 ? filtered : arr;
+        const preferred = pool.find((x: any) => PREFER.some((w) => nameOf(x).includes(w)));
+        if (preferred) return preferred;
         const sortedByStars = [...pool].sort(
           (a: any, b: any) => (b.stargazers_count ?? 0) - (a.stargazers_count ?? 0),
         );
-        const preferred = sortedByStars.find((x: any) => PREFER.some((w) => nameOf(x).includes(w)));
-        return preferred || sortedByStars[0] || null;
+        return sortedByStars[0] || null;
       };
 
       if (!owner) {
@@ -73,7 +74,7 @@ export function GithubActivityCard({
       if (!repo) {
         const fetchRepos = async (kind: "orgs" | "users") => {
           const r = await fetch(
-            `https://api.github.com/${kind}/${owner}/repos?sort=stars&per_page=20`,
+            `https://api.github.com/${kind}/${owner}/repos?sort=pushed&per_page=20`,
             { headers },
           ).catch(() => null);
           if (!r || !r.ok) return null;
