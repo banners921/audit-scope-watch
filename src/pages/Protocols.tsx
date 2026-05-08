@@ -62,8 +62,15 @@ export default function Protocols() {
         const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
         q = q.gte("last_audit_date", cutoff);
       }
-      // Note: minTvl, language, activeOnly filters disabled — columns no longer exist on protocols
-      void minTvl; void language; void activeOnly;
+      if (language) {
+        if (language === "Other") {
+          q = q.not("smart_contract_language", "in", "(Solidity,Rust,Move,Cairo,CosmWasm,Go,Haskell)");
+        } else {
+          q = q.eq("smart_contract_language", language);
+        }
+      }
+      // Note: minTvl, activeOnly filters disabled — columns no longer exist on protocols
+      void minTvl; void activeOnly;
 
       const { data, error, count } = await q;
       if (error) throw error;
@@ -109,13 +116,15 @@ export default function Protocols() {
             <option value="recent">Recent (≤1yr)</option>
           </select>
           <select value={language} onChange={(e) => setLanguage(e.target.value)} className="as-input">
-            <option value="">All languages</option>
+            <option value="">All Languages</option>
             <option value="Solidity">Solidity</option>
             <option value="Rust">Rust</option>
             <option value="Move">Move</option>
             <option value="Cairo">Cairo</option>
+            <option value="CosmWasm">CosmWasm</option>
             <option value="Go">Go</option>
-            <option value="Vyper">Vyper</option>
+            <option value="Haskell">Haskell</option>
+            <option value="Other">Other</option>
           </select>
         </div>
         <div className="flex flex-wrap gap-3">

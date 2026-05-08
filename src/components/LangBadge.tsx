@@ -1,9 +1,12 @@
 const LANG_COLORS: Record<string, string> = {
   solidity: "#3B82F6",
   rust: "#F97316",
-  move: "#8B5CF6",
+  move: "#A855F7",
   cairo: "#14B8A6",
+  cosmwasm: "#22C55E",
   go: "#06B6D4",
+  func: "#6B7280",
+  haskell: "#6366F1",
   vyper: "#10B981",
 };
 
