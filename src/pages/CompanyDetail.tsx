@@ -386,7 +386,7 @@ export default function CompanyDetail() {
       {/* SECURITY SIGNALS */}
       <div className="as-card p-5">
         <h3 className="text-sm font-semibold text-white mb-4">Security Signals</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Total TVL</div>
             <div className="font-mono text-lg font-bold text-teal-400 mt-1">
