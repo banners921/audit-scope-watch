@@ -41,27 +41,36 @@ export function GithubActivityCard({
       let owner: string | null = parsed?.owner ?? null;
       let repo: string | null = parsed?.repo ?? null;
 
-      const PREFER_NAME = ["contract", "core", "protocol", "token", "vault", "pool", "swap", "dex", "lending", "staking", "fusion", "settlement", "aggregat", "limit-order", "bridge"];
-      const PREFER_LANG = ["solidity", "rust", "move", "cairo", "typescript", "go"];
+      const PREFER_NAME = ["contract", "settlement", "protocol", "core", "vault", "pool", "swap", "lending", "staking", "fusion", "aggregat", "bridge", "limit-order", "program"];
       const EXCLUDE_NAME = ["wallet", "ios", "android", "mobile", "app", "website", "landing", "docs", "documentation", "demo", "example", "test", "sdk", "api", "backend", "server", "invoice", "chrome", "extension", "plugin"];
-      const EXCLUDE_LANG = ["c", "c++", "swift", "kotlin", "objective-c"];
+      const HARD_EXCLUDE_LANG = ["javascript", "typescript", "c", "c++", "swift", "kotlin", "objective-c", "html", "css", "python"];
+      const langExcluded = (x: any): boolean => {
+        const name = String(x?.name || "").toLowerCase();
+        const lang = String(x?.language || "").toLowerCase();
+        if (!HARD_EXCLUDE_LANG.includes(lang)) return false;
+        if (name.includes("contract") || name.includes("protocol")) return false;
+        return true;
+      };
+      const nameExcluded = (x: any): boolean => {
+        const name = String(x?.name || "").toLowerCase();
+        return EXCLUDE_NAME.some((w) => name.includes(w));
+      };
       const scoreRepo = (x: any): number => {
         const name = String(x?.name || "").toLowerCase();
         const lang = String(x?.language || "").toLowerCase();
         let score = 0;
+        if (lang === "solidity") score += 30;
+        if (["rust", "move", "cairo", "go"].includes(lang)) score += 20;
         for (const w of PREFER_NAME) if (name.includes(w)) score += 10;
-        if (lang === "solidity" || lang === "rust") score += 5;
-        score += Math.min(20, x?.stargazers_count ?? 0);
-        for (const w of EXCLUDE_NAME) if (name.includes(w)) score -= 100;
-        if (EXCLUDE_LANG.includes(lang)) score -= 100;
-        if (!PREFER_LANG.includes(lang) && lang) {
-          // neutral
-        }
+        score += Math.min(15, x?.stargazers_count ?? 0);
         return score;
       };
       const pickBest = (arr: any[]): any | null => {
         if (!Array.isArray(arr) || arr.length === 0) return null;
-        const scored = arr.map((x) => ({ x, s: scoreRepo(x) }));
+        const filtered = arr.filter((x) => !nameExcluded(x) && !langExcluded(x));
+        const pool = filtered.length > 0 ? filtered : arr.filter((x) => !nameExcluded(x));
+        const finalPool = pool.length > 0 ? pool : arr;
+        const scored = finalPool.map((x) => ({ x, s: scoreRepo(x) }));
         scored.sort((a, b) => b.s - a.s);
         return scored[0]?.x || null;
       };
