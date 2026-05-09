@@ -135,7 +135,7 @@ export function GithubActivityCard({
   if (q.isLoading) {
     return (
       <div className="as-card p-5">
-        <h3 className="text-sm font-semibold text-white mb-3">GitHub Activity</h3>
+        <h3 className="text-sm font-semibold text-white mb-3">Smart Contract Activity</h3>
         <div className="h-24 bg-white/[0.03] rounded animate-pulse" />
       </div>
     );
@@ -144,7 +144,7 @@ export function GithubActivityCard({
 
   return (
     <div className="as-card p-5">
-      <h3 className="text-sm font-semibold text-white mb-3">GitHub Activity</h3>
+      <h3 className="text-sm font-semibold text-white mb-3">Smart Contract Activity</h3>
       <div className="space-y-3 text-sm">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Repo</span>

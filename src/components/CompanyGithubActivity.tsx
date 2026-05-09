@@ -85,7 +85,7 @@ export function CompanyGithubActivity({ githubUrls }: { githubUrls: string[] }) 
   return (
     <div className="as-card p-5">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 className="text-sm font-semibold text-white">GitHub Activity</h3>
+        <h3 className="text-sm font-semibold text-white">Smart Contract Activity</h3>
         <div className="flex items-center gap-1">
           {PERIODS.map((p) => (
             <button
