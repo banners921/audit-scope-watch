@@ -41,19 +41,29 @@ export function GithubActivityCard({
       let owner: string | null = parsed?.owner ?? null;
       let repo: string | null = parsed?.repo ?? null;
 
-      const PREFER = ["contract", "core", "protocol", "smart", "token", "vault", "pool", "dex", "swap", "lending", "staking", "program"];
-      const EXCLUDE = ["demo", "docs", "documentation", "example", "test", "website", "landing", "frontend", "ui", "invoice", "sdk"];
+      const PREFER_NAME = ["contract", "core", "protocol", "token", "vault", "pool", "swap", "dex", "lending", "staking", "fusion", "settlement", "aggregat", "limit-order", "bridge"];
+      const PREFER_LANG = ["solidity", "rust", "move", "cairo", "typescript", "go"];
+      const EXCLUDE_NAME = ["wallet", "ios", "android", "mobile", "app", "website", "landing", "docs", "documentation", "demo", "example", "test", "sdk", "api", "backend", "server", "invoice", "chrome", "extension", "plugin"];
+      const EXCLUDE_LANG = ["c", "c++", "swift", "kotlin", "objective-c"];
+      const scoreRepo = (x: any): number => {
+        const name = String(x?.name || "").toLowerCase();
+        const lang = String(x?.language || "").toLowerCase();
+        let score = 0;
+        for (const w of PREFER_NAME) if (name.includes(w)) score += 10;
+        if (lang === "solidity" || lang === "rust") score += 5;
+        score += Math.min(20, x?.stargazers_count ?? 0);
+        for (const w of EXCLUDE_NAME) if (name.includes(w)) score -= 100;
+        if (EXCLUDE_LANG.includes(lang)) score -= 100;
+        if (!PREFER_LANG.includes(lang) && lang) {
+          // neutral
+        }
+        return score;
+      };
       const pickBest = (arr: any[]): any | null => {
         if (!Array.isArray(arr) || arr.length === 0) return null;
-        const nameOf = (x: any) => String(x?.name || "").toLowerCase();
-        const filtered = arr.filter((x: any) => !EXCLUDE.some((w) => nameOf(x).includes(w)));
-        const pool = filtered.length > 0 ? filtered : arr;
-        const preferred = pool.find((x: any) => PREFER.some((w) => nameOf(x).includes(w)));
-        if (preferred) return preferred;
-        const sortedByStars = [...pool].sort(
-          (a: any, b: any) => (b.stargazers_count ?? 0) - (a.stargazers_count ?? 0),
-        );
-        return sortedByStars[0] || null;
+        const scored = arr.map((x) => ({ x, s: scoreRepo(x) }));
+        scored.sort((a, b) => b.s - a.s);
+        return scored[0]?.x || null;
       };
 
       if (!owner) {
