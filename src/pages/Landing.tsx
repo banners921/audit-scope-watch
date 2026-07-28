@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { RadarScanner } from "@/components/RadarScanner";
@@ -12,13 +11,6 @@ import { Logo } from "@/components/Logo";
 
 export default function Landing() {
   const { user } = useAuth();
-
-  // Slow, looping radar sweep that keeps "finding targets" — not too fast, not too slow.
-  const [radar, setRadar] = useState(0.12);
-  useEffect(() => {
-    const id = setInterval(() => setRadar((p) => (p >= 1 ? 0.12 : p + 0.015)), 150);
-    return () => clearInterval(id);
-  }, []);
 
   const statsQ = useQuery({
     queryKey: ["landing-stats-v3"],
@@ -112,7 +104,7 @@ export default function Landing() {
           <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="w-[340px] h-[340px] rounded-full bg-primary/[0.06] blur-[90px]" />
           </div>
-          <RadarScanner active progress={radar} size={300} />
+          <RadarScanner active size={300} />
           <div className="relative text-[11.5px] text-muted-foreground mt-3 inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Continuously scanning {s ? n(s.companies) : "22,000+"} protocols for new audits &amp; targets

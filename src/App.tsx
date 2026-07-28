@@ -82,7 +82,7 @@ const App = () => (
             {/* Companies + auditors browse pages */}
             <Route path="/companies" element={<ProtectedRoute><CompaniesBrowse /></ProtectedRoute>} />
             <Route path="/audit-firms" element={<ProtectedRoute><AuditsBrowse /></ProtectedRoute>} />
-            <Route path="/auditors" element={<Navigate to="/audit-firms?view=firms" replace />} />
+            <Route path="/auditors" element={<ProtectedRoute><AuditorsBrowse /></ProtectedRoute>} />
             <Route path="/funding-rounds" element={<ProtectedRoute><FundingRoundsBrowse /></ProtectedRoute>} />
             <Route path="/companies-legacy" element={<ProtectedRoute><Companies forceTab="companies" /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><FundAnalytics /></ProtectedRoute>} />

@@ -31,7 +31,8 @@ const TITLES: Record<string, string> = {
   "/funding-rounds": "Funding rounds",
   "/companies": "Companies",
   "/audit-reports": "Audits",
-  "/audit-firms": "Auditors",
+  "/auditors": "Auditors",
+  "/audit-firms": "Audits",
   "/profile": "My Profile",
   "/account": "My Profile",
   "/reminders": "Reminders",
@@ -40,7 +41,7 @@ const TITLES: Record<string, string> = {
 const NAV = [
   { to: "/dashboard", label: "Home", icon: Home },
   { to: "/audit-reports", label: "Audits", icon: ShieldCheck },
-  { to: "/audit-firms", label: "Auditors", icon: Award },
+  { to: "/auditors", label: "Auditors", icon: Award },
   { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/funding-rounds", label: "Funding rounds", icon: Banknote },
   { to: "/funds", label: "Funds", icon: Wallet },

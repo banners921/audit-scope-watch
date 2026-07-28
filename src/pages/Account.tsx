@@ -43,7 +43,7 @@ export default function Account() {
     queryFn: async () => {
       const { data } = await supabase
         .from("api_keys")
-        .select("id,name,key_prefix,rate_limit_per_min,last_used_at,created_at,revoked_at")
+        .select("id,name,key_prefix,rate_limit_per_min,last_used_at,created_at,revoked_at,tier")
         .eq("user_id", user!.id)
         .is("revoked_at", null)
         .order("created_at", { ascending: false });
@@ -153,7 +153,30 @@ export default function Account() {
         <div className="flex items-center gap-2">
           <KeyRound className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">API keys</h2>
-          <span className="text-[10px] text-muted-foreground ml-1">used for the developer API at api.auditscope.ai</span>
+          <span className="text-[10px] text-muted-foreground ml-1">used for the developer API</span>
+        </div>
+
+        {/* Trial vs paid — make the limits + upgrade obvious */}
+        <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3.5">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <div className="text-[12.5px] font-semibold text-foreground inline-flex items-center gap-1.5">
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider font-bold">Trial</span>
+                New keys stream fresh audits as we catch them
+              </div>
+              <ul className="text-[11.5px] text-muted-foreground mt-2 space-y-1">
+                <li>• Live feed: new audits from the last <span className="text-foreground">180 days</span></li>
+                <li>• Up to <span className="text-foreground">25 rows</span> per request</li>
+                <li>• Report URLs &amp; the full 21K+ archive are <span className="text-foreground">withheld</span></li>
+              </ul>
+            </div>
+            <div className="text-right shrink-0">
+              <Link to="/pricing" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90">
+                Upgrade — full data <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <div className="text-[10px] text-muted-foreground mt-1.5">Full history · report links · higher limits</div>
+            </div>
+          </div>
         </div>
 
         {revealedKey && (
@@ -204,6 +227,11 @@ export default function Account() {
                   <div className="text-[13px] font-semibold text-foreground inline-flex items-center gap-2">
                     {k.name}
                     <span className="text-[10px] text-muted-foreground font-mono">{k.key_prefix}…</span>
+                    {(k.tier ?? "trial") === "trial" ? (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider font-bold">Trial</span>
+                    ) : (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 uppercase tracking-wider font-bold">Full</span>
+                    )}
                   </div>
                   <div className="text-[10.5px] text-muted-foreground mt-0.5">
                     {k.rate_limit_per_min} req/min · created {new Date(k.created_at).toLocaleDateString()}
