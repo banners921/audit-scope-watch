@@ -193,7 +193,7 @@ curl '${BASE_URL}/audits?limit=10' \\
                 </tr></thead>
                 <tbody>
                   <tr className="border-b border-white/[0.04]"><td className="px-3 py-2">Trial (free)</td><td className="px-3 py-2 text-right tabular-nums">60</td><td className="px-3 py-2 text-right tabular-nums">5,000</td></tr>
-                  <tr className="border-b border-white/[0.04]"><td className="px-3 py-2 text-primary">API · $89/mo</td><td className="px-3 py-2 text-right tabular-nums">1,200</td><td className="px-3 py-2 text-right tabular-nums">100,000</td></tr>
+                  <tr className="border-b border-white/[0.04]"><td className="px-3 py-2 text-primary">Full · $59/mo</td><td className="px-3 py-2 text-right tabular-nums">1,200</td><td className="px-3 py-2 text-right tabular-nums">100,000</td></tr>
                   <tr><td className="px-3 py-2 text-emerald-300">Enterprise</td><td className="px-3 py-2 text-right tabular-nums">6,000</td><td className="px-3 py-2 text-right tabular-nums">Unlimited</td></tr>
                 </tbody>
               </table>

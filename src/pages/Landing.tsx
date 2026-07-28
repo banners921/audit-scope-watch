@@ -169,7 +169,7 @@ export default function Landing() {
         <div className="as-card p-8 md:p-10 text-center space-y-4">
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Start free. Upgrade when it pays for itself.</h2>
           <p className="text-[13.5px] text-muted-foreground max-w-[560px] mx-auto">
-            App access is $49.99/mo for every module and alerts. Add the developer API for $89/mo.
+One plan — $59/mo unlocks the full platform, the API, and alerts.
           </p>
           <div className="flex flex-wrap gap-2 justify-center pt-1">
             <Link to={primaryHref} className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">

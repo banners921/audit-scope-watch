@@ -308,7 +308,7 @@ function NotificationCard({ tier, profile }: { tier: PlanTier; profile: any }) {
             Pipe new audits, hacks, funding rounds, and news for your watched protocols directly to Telegram. Slack coming soon.
           </p>
           <Link to="/pricing" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
-            Unlock alerts — App access $49.99/mo <ArrowRight className="w-3.5 h-3.5" />
+            Unlock everything — $59/mo <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </section>
