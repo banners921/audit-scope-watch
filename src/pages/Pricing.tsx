@@ -2,46 +2,25 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Check, Crown, Building2, Code2, Bell, Zap, Database, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
-const APP_FEATURES = [
-  "Every module unlocked — audits, findings, auditors, companies, funding, contacts, on-chain",
-  "Full history + report URLs",
-  "Severity breakdown on every finding",
+const EVERYTHING_FEATURES = [
+  "Full platform — audits, findings, auditors, companies, funding, contacts, on-chain",
+  "Full history + report URLs (the entire 21K+ archive)",
+  "Full REST API — all endpoints, JSON, cursor pagination",
+  "Signal alerts — new audits, funding, auditor rotations (Telegram; Slack soon)",
   "Unlimited watched protocols",
-  "Telegram signal alerts (Slack coming soon)",
   "Cancel anytime",
 ];
 
-const API_FEATURES = [
-  "Everything in App access",
-  "Full REST API — all endpoints",
-  "Full history + report URLs via API",
-  "Higher rate limits, row caps lifted",
-  "JSON exports · cursor pagination",
-  "Webhooks (coming soon)",
-];
-
-const ENTERPRISE_EXTRAS = [
-  "Unlimited API + webhooks",
-  "6,000 req/min · burst friendly",
-  "Bulk historical exports (all 17K+ audits)",
-  "Dedicated Slack channel + named engineer",
-  "SLA + uptime guarantee",
-  "Custom endpoints + bespoke signal classifiers",
-  "On-prem deployment option",
-  "Compliance review + DPA",
-  "Single sign-on (SAML / OIDC)",
-];
-
 const FREE_FEATURES = [
-  "Full dashboard browse · audits, firms, protocols, hacks, funding",
-  "Search 17K+ audit reports",
-  "View finding counts + severity breakdown",
-  "5 watched protocols (no alerts)",
+  "Browse audits, auditors, companies, funding & hacks",
+  "Search the 21K+ audit archive",
+  "Finding counts + severity breakdown",
+  "Trial API key (recent window, capped rows)",
 ];
 
 const FAQS = [
-  { q: "Is there a free tier?", a: "Yes. Sign up free to browse the open modules and try a capped API. App access ($49.99/mo) unlocks every module; API access ($89/mo) adds the full REST API for your stack." },
-  { q: "What's the difference between App and API?", a: "App access ($49.99/mo) unlocks the whole web app — every module, full history, alerts. API access ($89/mo) includes everything in App plus the full REST API so you can pipe the data into your own systems." },
+  { q: "Is there a free tier?", a: "Yes. Sign up free to browse the platform and try a trial API key (recent window, capped). Everything ($59/mo) unlocks the full platform, the complete archive with report URLs, the full API, and alerts." },
+  { q: "What do I get for $59?", a: "Everything — the full web app, the complete 21K+ audit archive with report URLs, the full REST API, and signal alerts. One plan, no add-ons." },
   { q: "Where does the data come from?", a: "We crawl per-firm GitHub repos (50+ audit firms), protocol docs (Mintlify/GitBook), DefiLlama, web3leads, RootData, Solodit, Immunefi, HackenProof. Every record cites its sources." },
   { q: "How fresh is it?", a: "Audit firm GitHub repos polled every 30 min. Per-protocol /audits folders hourly. New audits visible within ~5 minutes of GitHub publish. Hacks every 4h. Funding rounds every 15 min." },
   { q: "What's your data accuracy policy?", a: "If we don't have a value, the API returns null — never a guess. Dead projects are flagged. Audit dates come from PDF metadata or filenames, not inferred." },
@@ -63,12 +42,12 @@ export default function Pricing() {
           <div className="text-[10px] uppercase tracking-[0.18em] text-primary font-semibold">Pricing</div>
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">Simple, honest pricing.</h1>
           <p className="text-muted-foreground text-[14.5px] leading-relaxed max-w-[600px] mx-auto">
-            Start free. Unlock the full app for <span className="text-foreground font-semibold">$49.99/mo</span>, or add the developer API for <span className="text-foreground font-semibold">$89/mo</span>.
+            Start free. Unlock everything — full platform, API and alerts — for <span className="text-foreground font-semibold">$59/mo</span>. One plan, no add-ons.
           </p>
         </div>
 
         {/* === Three cards: Free / App $49.99 / API $89 === */}
-        <div className="grid md:grid-cols-3 gap-4 mt-12 max-w-[1040px] mx-auto">
+        <div className="grid md:grid-cols-2 gap-4 mt-12 max-w-[820px] mx-auto">
           {/* Free */}
           <div className="as-card p-6 flex flex-col gap-5">
             <div>
@@ -92,21 +71,21 @@ export default function Pricing() {
             </Link>
           </div>
 
-          {/* App access $49.99 — headline */}
+          {/* $59 Everything */}
           <div className="as-card p-6 flex flex-col gap-5 border-primary/40 shadow-[0_0_0_1px_rgba(34,211,238,0.25),0_0_40px_-12px_rgba(34,211,238,0.3)] bg-gradient-to-br from-primary/[0.05] to-transparent relative">
-            <div className="absolute -top-2.5 left-6 px-2 py-0.5 rounded bg-primary text-primary-foreground text-[9.5px] uppercase tracking-[0.16em] font-bold">Most popular</div>
+            <div className="absolute -top-2.5 left-6 px-2 py-0.5 rounded bg-primary text-primary-foreground text-[9.5px] uppercase tracking-[0.16em] font-bold">Everything</div>
             <div>
               <div className="text-[10px] uppercase tracking-[0.16em] text-primary font-semibold inline-flex items-center gap-1.5">
-                <Crown className="w-3 h-3" /> App access
+                <Crown className="w-3 h-3" /> Full access
               </div>
               <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-5xl font-semibold text-foreground tabular-nums">$49.99</span>
+                <span className="text-5xl font-semibold text-foreground tabular-nums">$59</span>
                 <span className="text-[13px] text-muted-foreground">/mo</span>
               </div>
-              <div className="text-[12.5px] text-muted-foreground mt-1.5">The whole app, every module unlocked.</div>
+              <div className="text-[12.5px] text-muted-foreground mt-1.5">Full platform + API + alerts. One plan.</div>
             </div>
             <ul className="space-y-2 text-[12.5px] flex-1">
-              {APP_FEATURES.map((f, i) => (
+              {EVERYTHING_FEATURES.map((f, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
                   <span>{f}</span>
@@ -114,35 +93,9 @@ export default function Pricing() {
               ))}
             </ul>
             <Link to={user ? "/account" : "/signup"} className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
-              {user ? "Upgrade" : "Start free"} <ArrowRight className="w-4 h-4" />
+              {user ? "Upgrade — $59/mo" : "Start free"} <ArrowRight className="w-4 h-4" />
             </Link>
             <div className="text-[11px] text-muted-foreground text-center -mt-1">No credit card to start. Cancel anytime.</div>
-          </div>
-
-          {/* API access $89 */}
-          <div className="as-card p-6 flex flex-col gap-5">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.16em] text-primary font-semibold inline-flex items-center gap-1.5">
-                <Code2 className="w-3 h-3" /> API access
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-5xl font-semibold text-foreground tabular-nums">$89</span>
-                <span className="text-[13px] text-muted-foreground">/mo</span>
-              </div>
-              <div className="text-[12.5px] text-muted-foreground mt-1.5">App access + the full developer API.</div>
-            </div>
-            <ul className="space-y-2 text-[12.5px] flex-1">
-              {API_FEATURES.map((f, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
-            <Link to={user ? "/account" : "/signup"} className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md border border-primary/40 text-primary text-[13.5px] font-semibold hover:bg-primary/[0.08]">
-              {user ? "Get API key" : "Start free"} <ArrowRight className="w-4 h-4" />
-            </Link>
-            <div className="text-[11px] text-muted-foreground text-center -mt-1">Generate a key in one click.</div>
           </div>
         </div>
 
@@ -154,30 +107,18 @@ export default function Pricing() {
           <ValueProp icon={<ShieldCheck className="w-5 h-5" />} title="Custom signals" body="Audit-rotation, dryspell, vendor-shopping, hiring surge — query the patterns you care about." />
         </section>
 
-        {/* Enterprise band */}
-        <section className="mt-20 as-card p-8 md:p-10 bg-gradient-to-br from-emerald-500/[0.04] to-transparent border-emerald-500/20">
-          <div className="grid md:grid-cols-[1.2fr_1fr] gap-8 items-start">
-            <div className="space-y-4">
-              <div className="text-[10px] uppercase tracking-[0.16em] text-emerald-300 font-semibold inline-flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5" /> Enterprise
-              </div>
-              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">For funds, exchanges, insurance, and security firms.</h2>
-              <p className="text-[13px] text-muted-foreground leading-relaxed max-w-[480px]">
-                When you need SLA, on-prem, custom signals, or a named engineer in your Slack. We sit down, scope it, and quote.
-              </p>
-              <a href="https://t.me/web3leads" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 text-[12.5px] font-semibold">
-                Message us on Telegram <ArrowRight className="w-3.5 h-3.5" />
-              </a>
-            </div>
-            <ul className="space-y-1.5 text-[12.5px]">
-              {ENTERPRISE_EXTRAS.map((f, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <Check className="w-3.5 h-3.5 text-emerald-300 shrink-0 mt-0.5" />
-                  <span className="text-foreground/90">{f}</span>
-                </li>
-              ))}
-            </ul>
+        {/* Enterprise / bespoke — simple contact, no separate tier */}
+        <section className="mt-20 as-card p-6 md:p-8 bg-gradient-to-br from-emerald-500/[0.04] to-transparent border-emerald-500/20 text-center">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-emerald-300 font-semibold inline-flex items-center gap-1.5 justify-center">
+            <Building2 className="w-3.5 h-3.5" /> Need more?
           </div>
+          <h2 className="text-xl md:text-2xl font-semibold tracking-tight mt-2">Bulk exports, higher limits, or a custom feed?</h2>
+          <p className="text-[13px] text-muted-foreground leading-relaxed max-w-[480px] mx-auto mt-2">
+            For funds, exchanges, insurance and security firms that need volume beyond the standard plan — we'll scope and quote it.
+          </p>
+          <a href="https://t.me/web3leads" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 text-[12.5px] font-semibold mt-4">
+            Message us on Telegram <ArrowRight className="w-3.5 h-3.5" />
+          </a>
         </section>
 
         {/* Built for */}
