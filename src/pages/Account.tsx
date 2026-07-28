@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { KeyRound, Plus, Copy, Trash2, Crown, Zap, Building2, ArrowRight, Bell, Slack, Send, Loader2, Save, Activity } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { startCheckout } from "@/lib/checkout";
+import { startCheckout, openBillingPortal } from "@/lib/checkout";
 
 type PlanTier = "free" | "developer" | "pro" | "enterprise";
 
@@ -127,17 +127,13 @@ export default function Account() {
           </div>
           <div>
             {tier === "free" ? (
-              <Link to="/pricing" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
-                Upgrade <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            ) : tier === "enterprise" ? (
-              <a href="https://t.me/web3leads" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] text-[12.5px] font-semibold hover:bg-white/[0.04]">
-                Message us on Telegram
-              </a>
+              <button onClick={startCheckout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
+                Upgrade — $59/mo <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             ) : (
-              <Link to="/pricing" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] text-[12.5px] font-semibold hover:bg-white/[0.04]">
+              <button onClick={openBillingPortal} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] text-[12.5px] font-semibold hover:bg-white/[0.04]">
                 Manage plan
-              </Link>
+              </button>
             )}
           </div>
         </div>
