@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import { ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "./AppLayout";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
@@ -13,5 +14,11 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     );
   }
   if (!session) return <Navigate to="/login" replace />;
-  return <AppLayout>{children}</AppLayout>;
+  // ErrorBoundary inside AppLayout — page crashes show the error UI but the
+  // sidebar + header stay rendered so the user can still navigate.
+  return (
+    <AppLayout>
+      <ErrorBoundary>{children}</ErrorBoundary>
+    </AppLayout>
+  );
 }

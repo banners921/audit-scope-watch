@@ -6,33 +6,37 @@
 
 @layer base {
   :root {
-    /* AuditScope dark-only design tokens (HSL) */
-    --background: 0 0% 4%;           /* #0A0A0A */
+    /* Dark theme tokens (default) */
+    --background: 0 0% 4%;
     --foreground: 0 0% 100%;
-    --surface: 0 0% 7%;              /* #111111 cards */
+    --surface: 0 0% 7%;
     --surface-2: 0 0% 9%;
-    --border: 0 0% 12%;              /* #1F1F1F */
+    --border: 0 0% 12%;
     --muted: 0 0% 10%;
-    --muted-foreground: 218 13% 67%; /* #A0A8B8 */
-    --card: 0 0% 7%;                 /* #111111 */
+    --muted-foreground: 218 13% 67%;
+    --card: 0 0% 7%;
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 7%;
     --popover-foreground: 0 0% 100%;
-    --primary: 187 85% 53%;          /* #22D3EE teal */
+    --primary: 187 85% 53%;
     --primary-foreground: 0 0% 4%;
-    --secondary: 221 83% 53%;        /* #2563EB blue */
+    --secondary: 221 83% 53%;
     --secondary-foreground: 0 0% 100%;
     --accent: 187 85% 53%;
     --accent-foreground: 0 0% 4%;
-    --destructive: 0 84% 60%;        /* #EF4444 */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;           /* #F59E0B */
-    --success: 160 84% 39%;          /* #10B981 */
+    --warning: 38 92% 50%;
+    --success: 160 84% 39%;
     --input: 0 0% 10%;
     --ring: 187 85% 53%;
     --radius: 1rem;
 
-    --sidebar-background: 0 0% 4%;   /* #0A0A0A */
+    /* RGB triplet so we can apply alpha at use sites without hard-coding white */
+    --line-1: 255 255 255;
+    --line-1-alpha: 0.06;
+
+    --sidebar-background: 0 0% 4%;
     --sidebar-foreground: 218 13% 80%;
     --sidebar-primary: 187 85% 53%;
     --sidebar-primary-foreground: 0 0% 4%;
@@ -40,6 +44,45 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 12%;
     --sidebar-ring: 187 85% 53%;
+  }
+
+  /* Light theme — flip tokens. Applied via [data-theme="light"] on <html>. */
+  [data-theme="light"] {
+    --background: 0 0% 98%;
+    --foreground: 222 14% 12%;
+    --surface: 0 0% 100%;
+    --surface-2: 220 13% 96%;
+    --border: 220 13% 88%;
+    --muted: 220 13% 94%;
+    --muted-foreground: 215 14% 40%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 14% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 14% 12%;
+    --primary: 187 85% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 221 83% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --accent: 187 85% 38%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 75% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 88% 42%;
+    --success: 160 70% 32%;
+    --input: 0 0% 98%;
+    --ring: 187 85% 45%;
+
+    --line-1: 17 24 39;
+    --line-1-alpha: 0.10;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 14% 24%;
+    --sidebar-primary: 187 85% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 13% 96%;
+    --sidebar-accent-foreground: 222 14% 12%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 187 85% 45%;
   }
 }
 
@@ -55,18 +98,50 @@
   .font-mono {
     font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line-1) / 0.18) transparent;
+  }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--line-1) / 0.16);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--primary) / 0.5);
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-corner { background: transparent; }
 }
 
 @layer components {
   .as-card {
     background-color: hsl(var(--surface));
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgb(var(--line-1) / var(--line-1-alpha));
     border-radius: 16px;
+    box-shadow: 0 1px 0 rgb(var(--line-1) / 0.02) inset, 0 8px 24px -16px rgba(0, 0, 0, 0.18);
+  }
+  .as-card-header {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
+  }
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, hsl(var(--primary) / 0.04), transparent 60%),
+      radial-gradient(ellipse 50% 50% at 100% 100%, hsl(var(--secondary) / 0.03), transparent 60%);
+    background-attachment: fixed;
   }
   .as-input {
     background-color: hsl(var(--input));
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: white;
+    border: 1px solid rgb(var(--line-1) / 0.10);
+    color: hsl(var(--foreground));
     border-radius: 10px;
     padding: 0.5rem 0.75rem;
     width: 100%;
@@ -90,11 +165,14 @@
     background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)));
     color: hsl(var(--primary-foreground));
   }
-  .as-btn-primary:hover { filter: brightness(1.1); }
+  .as-btn-primary:hover { filter: brightness(1.08); }
   .as-btn-ghost {
     background: transparent;
     color: hsl(var(--muted-foreground));
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgb(var(--line-1) / 0.10);
   }
-  .as-btn-ghost:hover { color: white; border-color: rgba(255,255,255,0.18); }
+  .as-btn-ghost:hover {
+    color: hsl(var(--foreground));
+    border-color: rgb(var(--line-1) / 0.20);
+  }
 }

@@ -17,6 +17,7 @@ export type Company = {
   company_type: string | null;
   market_cap_usd: number | null;
   data_source: string | null;
+  is_institution: boolean | null;
 };
 
 export type FundingRound = {

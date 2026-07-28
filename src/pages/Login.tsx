@@ -13,7 +13,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (session) navigate("/dashboard", { replace: true });
+    if (session) navigate("/home", { replace: true });
   }, [session, navigate]);
 
   async function onSubmit(e: FormEvent) {
@@ -25,7 +25,7 @@ export default function Login() {
       toast.error(error.message);
       return;
     }
-    navigate("/dashboard");
+    navigate("/home");
   }
 
   return (
