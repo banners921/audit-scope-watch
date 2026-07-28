@@ -155,7 +155,6 @@ export default function CompaniesBrowse() {
             const badges: { label: string; tone: any }[] = [];
             if (c.category) badges.push({ label: c.category, tone: "primary" });
             if (c.has_bug_bounty) badges.push({ label: "Bug bounty", tone: "muted" });
-            if (c.has_been_hacked) badges.push({ label: "Hacked", tone: "danger" });
             return (
               <EntityCard
                 key={c.slug}

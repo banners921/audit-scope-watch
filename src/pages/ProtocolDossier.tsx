@@ -65,6 +65,16 @@ export default function ProtocolDossier() {
     },
   });
 
+  const hacksQ = useQuery({
+    queryKey: ["dossier-hacks", slug],
+    queryFn: async () => {
+      const { count } = await supabase.from("hacks")
+        .select("id", { count: "exact", head: true })
+        .eq("company_slug", slug);
+      return count ?? 0;
+    },
+  });
+
   const c = companyQ.data;
   const audits = auditsQ.data ?? [];
   const findings = findingsQ.data ?? [];
@@ -90,6 +100,22 @@ export default function ProtocolDossier() {
   const firstSentence = c.description?.split(/(?<=[.!?])\s/)[0]?.slice(0, 220);
   const summary = firstSentence
     || `${c.name}${c.category ? ` is a ${c.category} project` : ""}${audits.length ? `, audited ${audits.length} time${audits.length === 1 ? "" : "s"} by ${auditors.length} firm${auditors.length === 1 ? "" : "s"}` : ""}.`;
+  const hackCount = hacksQ.data ?? 0;
+
+  // Smart, simple insight line derived from audit history
+  const dated = audits.map((a) => a.audit_date).filter(Boolean).map((d) => new Date(d as string).getTime()).sort((a, b) => a - b);
+  const insight: string[] = [];
+  if (dated.length >= 2) {
+    const cadence = Math.round((dated[dated.length - 1] - dated[0]) / 86400000 / (dated.length - 1));
+    if (cadence > 0) insight.push(`Audited about every ${cadence >= 60 ? `${Math.round(cadence / 30)} months` : `${cadence} days`}`);
+  }
+  if (auditors.length >= 3) insight.push(`rotates between ${auditors.length} firms`);
+  else if (auditors.length === 2) insight.push(`uses 2 firms (${auditors.join(", ")})`);
+  else if (auditors.length === 1) insight.push(`sticks with ${auditors[0]}`);
+  if (dated.length) {
+    const lastDays = Math.round((Date.now() - dated[dated.length - 1]) / 86400000);
+    insight.push(`last audit ${lastDays <= 0 ? "today" : `${lastDays}d ago`}`);
+  }
 
   return (
     <div className="max-w-[900px] mx-auto space-y-5">
@@ -109,9 +135,12 @@ export default function ProtocolDossier() {
               <h1 className="text-2xl font-semibold text-foreground tracking-tight">{c.name}</h1>
               {c.category && <span className="text-[11px] px-2 py-0.5 rounded border border-primary/25 bg-primary/[0.08] text-primary">{c.category}</span>}
               {c.has_bug_bounty && <span className="text-[11px] px-2 py-0.5 rounded border border-white/10 text-muted-foreground inline-flex items-center gap-1"><Bug className="w-3 h-3" />Bug bounty</span>}
-              {c.has_been_hacked && <span className="text-[11px] px-2 py-0.5 rounded border border-rose-500/25 bg-rose-500/10 text-rose-300 inline-flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Hacked</span>}
+              {(hackCount > 0 || c.has_been_hacked) && <span className="text-[11px] px-2 py-0.5 rounded border border-amber-500/25 bg-amber-500/10 text-amber-300 inline-flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{hackCount > 0 ? `${hackCount} hack${hackCount === 1 ? "" : "s"} in history` : "Prior incident"}</span>}
             </div>
             <p className="text-[13.5px] text-muted-foreground mt-2 leading-relaxed">{summary}</p>
+            {insight.length > 0 && (
+              <p className="text-[12px] text-primary/80 mt-1.5">{insight.join(" · ")}</p>
+            )}
             <div className="flex items-center gap-3 mt-3 text-[12px]">
               {c.url && <a href={safeUrl(c.url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary"><Globe className="w-3.5 h-3.5" />Website</a>}
               {c.twitter && <a href={`https://x.com/${c.twitter.replace(/^@/, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary"><ExternalLink className="w-3.5 h-3.5" />X</a>}

@@ -487,14 +487,16 @@ export default function AuditReports() {
                             >
                               Finding only
                             </span>
-                          ) : (
+                          ) : (r.audit_type && r.audit_type.toLowerCase() !== "audit") ? (
                             <AuditTypeBadge type={r.audit_type} variant="normal" />
+                          ) : (
+                            <span className="text-muted-foreground/30">—</span>
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-[11.5px] text-white/90 truncate max-w-[150px]">{r.audit_firm || "—"}</td>
                         <td className="px-3 py-2.5 text-[11px] font-mono whitespace-nowrap">
                           {findings === 0 ? (
-                            <span className="text-muted-foreground/60">0/0/0/0</span>
+                            <span className="text-muted-foreground/30">—</span>
                           ) : (
                             <span className="space-x-1">
                               <span className={(r.findings_critical ?? 0) > 0 ? "text-rose-300 font-bold" : "text-muted-foreground/60"}>{r.findings_critical ?? 0}</span>
