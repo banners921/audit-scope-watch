@@ -1,17 +1,18 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowRight, ShieldCheck, Activity, Code2, GitBranch, Lock,
+  ArrowRight, ShieldCheck, Activity, Code2, GitBranch,
   Banknote, Building2, Users, Bug, ListChecks, Award, Boxes, Bell,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { Logo } from "@/components/Logo";
 
 export default function Landing() {
   const { user } = useAuth();
 
   const statsQ = useQuery({
-    queryKey: ["landing-stats-v2"],
+    queryKey: ["landing-stats-v3"],
     refetchInterval: 60_000,
     queryFn: async () => {
       const [audits, findings, auditors, companies, funding, hacks, onchain, audits24h] = await Promise.all([
@@ -38,15 +39,15 @@ export default function Landing() {
   const primaryLabel = user ? "Open app" : "Start free";
 
   const CARDS = [
-    { icon: <ShieldCheck className="w-5 h-5" />, title: "Audits", stat: n(s?.audits), sub: "Every report, severity-scored", locked: false },
-    { icon: <ListChecks className="w-5 h-5" />, title: "Findings", stat: n(s?.findings), sub: "Individual issues — Crit / High / Med / Low", locked: true },
-    { icon: <Award className="w-5 h-5" />, title: "Auditors", stat: n(s?.auditors), sub: "Firm portfolios & auditor rotations", locked: false },
-    { icon: <Building2 className="w-5 h-5" />, title: "Company database", stat: n(s?.companies), sub: "Protocols, profiles & categories", locked: false },
-    { icon: <Banknote className="w-5 h-5" />, title: "Funding rounds", stat: n(s?.funding), sub: "Investors, amounts & dates", locked: true },
-    { icon: <Users className="w-5 h-5" />, title: "Contacts & contact info", stat: "Verified", sub: "Decision-makers, emails & LinkedIn", locked: true },
-    { icon: <GitBranch className="w-5 h-5" />, title: "GitHub activity", stat: "Live", sub: "Commit signals — who's shipping now", locked: true },
-    { icon: <Boxes className="w-5 h-5" />, title: "On-chain footprint", stat: n(s?.onchain), sub: "Contracts & deployments per protocol", locked: false },
-    { icon: <Bug className="w-5 h-5" />, title: "Hacks & exploits", stat: n(s?.hacks), sub: "Amount lost, technique & vector", locked: false },
+    { icon: <ShieldCheck className="w-5 h-5" />, title: "Audits", stat: n(s?.audits), sub: "Every report, severity-scored" },
+    { icon: <ListChecks className="w-5 h-5" />, title: "Findings", stat: n(s?.findings), sub: "Individual issues — Crit / High / Med / Low" },
+    { icon: <Award className="w-5 h-5" />, title: "Auditors", stat: n(s?.auditors), sub: "Firm portfolios & auditor rotations" },
+    { icon: <Building2 className="w-5 h-5" />, title: "Company database", stat: n(s?.companies), sub: "Protocols, profiles & categories" },
+    { icon: <Banknote className="w-5 h-5" />, title: "Funding rounds", stat: n(s?.funding), sub: "Investors, amounts & dates" },
+    { icon: <Users className="w-5 h-5" />, title: "Contacts & contact info", stat: "Verified", sub: "Decision-makers, emails & LinkedIn" },
+    { icon: <GitBranch className="w-5 h-5" />, title: "GitHub activity", stat: "Live", sub: "Commit signals — who's shipping now" },
+    { icon: <Boxes className="w-5 h-5" />, title: "On-chain footprint", stat: n(s?.onchain), sub: "Contracts & deployments per protocol" },
+    { icon: <Bug className="w-5 h-5" />, title: "Hacks & exploits", stat: n(s?.hacks), sub: "Amount lost, technique & vector" },
   ];
 
   return (
@@ -54,10 +55,7 @@ export default function Landing() {
       {/* Nav */}
       <nav className="sticky top-0 z-30 backdrop-blur bg-background/70 border-b" style={{ borderColor: "rgb(var(--line-1) / var(--line-1-alpha))" }}>
         <div className="max-w-[1100px] mx-auto px-4 lg:px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-bold tracking-tight">
-            <ShieldCheck className="w-5 h-5 text-primary" />
-            <span className="text-[15px]">AuditScope<span className="text-primary">.ai</span></span>
-          </Link>
+          <Link to="/"><Logo size={22} /></Link>
           <div className="flex items-center gap-2">
             <Link to="/docs" className="text-[12.5px] text-muted-foreground hover:text-foreground px-3 py-1.5 hidden sm:inline">API docs</Link>
             {user ? (
@@ -80,7 +78,7 @@ export default function Landing() {
       <section className="max-w-[1100px] mx-auto px-4 lg:px-6 pt-16 pb-10 text-center">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-primary/30 bg-primary/[0.08] text-[10.5px] uppercase tracking-[0.14em] text-primary font-semibold">
           <Activity className="w-3 h-3 animate-pulse" />
-          {s ? `${n(s.audits)} audits · ${n(s.audits24h)} added today` : "Live data"}
+          {s ? `${n(s.audits)} audits · ${n(s.audits24h)} added today` : "Live security data"}
         </div>
         <h1 className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] mt-5 max-w-[820px] mx-auto">
           The web3 security<br /><span className="text-primary">data platform.</span>
@@ -100,19 +98,23 @@ export default function Landing() {
         <div className="text-[11px] text-muted-foreground mt-3">Free to start · No card required</div>
       </section>
 
-      {/* THE CARD GRID — what you get */}
+      {/* Card grid */}
       <section className="max-w-[1100px] mx-auto px-4 lg:px-6 pb-6">
         <div className="text-center mb-6">
           <div className="text-[10px] uppercase tracking-[0.16em] text-primary font-semibold">Inside the app</div>
           <h2 className="text-xl md:text-2xl font-semibold tracking-tight mt-1">Everything we track, in one place</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {CARDS.map((c) => <DataCard key={c.title} {...c} />)}
+          {CARDS.map((c) => (
+            <div key={c.title} className="as-card p-5 hover:border-primary/40 transition-colors">
+              <div className="w-9 h-9 rounded-md bg-primary/[0.10] text-primary flex items-center justify-center">{c.icon}</div>
+              <div className="text-2xl font-semibold tabular-nums mt-3 text-foreground">{c.stat}</div>
+              <div className="text-[14px] font-semibold text-foreground mt-1">{c.title}</div>
+              <div className="text-[12px] text-muted-foreground mt-0.5">{c.sub}</div>
+            </div>
+          ))}
         </div>
-        <div className="text-center text-[11.5px] text-muted-foreground mt-4">
-          <Lock className="w-3 h-3 inline mr-1 -mt-0.5" />
-          Locked modules unlock with a paid plan. Start free to explore the rest.
-        </div>
+        <div className="text-center text-[11.5px] text-muted-foreground mt-4">Sign up free to explore every module.</div>
       </section>
 
       {/* API + Alerts */}
@@ -144,8 +146,7 @@ export default function Landing() {
         <div className="as-card p-8 md:p-10 text-center space-y-4">
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Start free. Upgrade when it pays for itself.</h2>
           <p className="text-[13.5px] text-muted-foreground max-w-[560px] mx-auto">
-            Free trial browses the open modules and a capped API. Paid unlocks findings, funding,
-            contacts, GitHub signals, full history and alerts.
+            App access is $49.99/mo for every module and alerts. Add the developer API for $89/mo.
           </p>
           <div className="flex flex-wrap gap-2 justify-center pt-1">
             <Link to={primaryHref} className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">
@@ -161,10 +162,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t" style={{ borderColor: "rgb(var(--line-1) / var(--line-1-alpha))" }}>
         <div className="max-w-[1100px] mx-auto px-4 lg:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-primary" />
-            <span>AuditScope<span className="text-primary">.ai</span></span>
-          </div>
+          <Logo size={18} />
           <div className="flex items-center gap-5">
             <Link to="/docs" className="hover:text-foreground">API docs</Link>
             <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
@@ -173,24 +171,6 @@ export default function Landing() {
           </div>
         </div>
       </footer>
-    </div>
-  );
-}
-
-function DataCard({ icon, title, stat, sub, locked }: { icon: React.ReactNode; title: string; stat: string; sub: string; locked: boolean }) {
-  return (
-    <div className={`as-card p-5 relative overflow-hidden ${locked ? "" : "hover:border-primary/40 transition-colors"}`}>
-      {locked && (
-        <div className="absolute top-3 right-3 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9.5px] font-semibold uppercase tracking-wider">
-          <Lock className="w-2.5 h-2.5" /> Paid
-        </div>
-      )}
-      <div className="w-9 h-9 rounded-md bg-primary/[0.10] text-primary flex items-center justify-center">{icon}</div>
-      <div className={`text-2xl font-semibold tabular-nums mt-3 ${locked ? "text-foreground/70 blur-[3px] select-none" : "text-foreground"}`}>
-        {stat}
-      </div>
-      <div className="text-[14px] font-semibold text-foreground mt-1">{title}</div>
-      <div className="text-[12px] text-muted-foreground mt-0.5">{sub}</div>
     </div>
   );
 }
