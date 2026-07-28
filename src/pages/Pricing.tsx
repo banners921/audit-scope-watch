@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Crown, Building2, Code2, Bell, Zap, Database, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { startCheckout } from "@/lib/checkout";
 
 const EVERYTHING_FEATURES = [
   "Full platform — audits, findings, auditors, companies, funding, contacts, on-chain",
@@ -92,9 +93,15 @@ export default function Pricing() {
                 </li>
               ))}
             </ul>
-            <Link to={user ? "/account" : "/signup"} className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
-              {user ? "Upgrade — $59/mo" : "Start free"} <ArrowRight className="w-4 h-4" />
-            </Link>
+            {user ? (
+              <button onClick={startCheckout} className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
+                Upgrade — $59/mo <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <Link to="/signup" className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
+                Start free <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
             <div className="text-[11px] text-muted-foreground text-center -mt-1">No credit card to start. Cancel anytime.</div>
           </div>
         </div>
