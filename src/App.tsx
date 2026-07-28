@@ -51,6 +51,7 @@ import AuditedRepos from "./pages/AuditedRepos";
 import BugBounties from "./pages/BugBounties";
 import SmartContracts from "./pages/SmartContracts";
 import AuditReports from "./pages/AuditReports";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/bug-bounties" element={<ProtectedRoute><BugBounties /></ProtectedRoute>} />
             <Route path="/smart-contracts" element={<ProtectedRoute><SmartContracts /></ProtectedRoute>} />
             <Route path="/audit-reports" element={<ProtectedRoute><AuditReports /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="/research" element={<Navigate to="/companies" replace />} />
             <Route path="/protocols" element={<Navigate to="/companies" replace />} />
             {/* Legacy detail pages → unified dossier */}

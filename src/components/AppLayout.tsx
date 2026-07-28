@@ -54,6 +54,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const isAdminQ = useQuery({
+    queryKey: ["is-admin", user?.id],
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("user_profiles").select("is_admin").eq("user_id", user!.id).maybeSingle();
+      return !!data?.is_admin;
+    },
+  });
+
   const dueCount = useQuery({
     queryKey: ["reminders-due-count", user?.id],
     enabled: !!user,
@@ -174,6 +184,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <UserIcon className="w-4 h-4 shrink-0" />
               {!collapsed && <span className="font-medium">My Profile</span>}
             </NavLink>
+            {isAdminQ.data && (
+              <NavLink to="/admin" onClick={() => setMobileOpen(false)} className={itemClass} title={collapsed ? "Admin" : undefined}>
+                <ShieldCheck className="w-4 h-4 shrink-0 text-primary" />
+                {!collapsed && <span className="font-medium text-primary">Admin</span>}
+              </NavLink>
+            )}
           </div>
         </nav>
       </aside>
