@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Globe, Twitter } from "lucide-react";
+import { Search, Globe, Twitter, TrendingUp } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { normalizeTwitterUrl } from "@/lib/format";
+import { ViewToggle, type ViewMode } from "@/components/ViewToggle";
 
 const PAGE_SIZE = 50;
+const VIEW_KEY = "as_funds_view";
 
 type Fund = {
   slug: string;
@@ -19,11 +21,29 @@ type Fund = {
   portfolio_companies: string | null;
 };
 
+function extractDomain(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
 export default function Funds() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [page, setPage] = useState(0);
+  const [view, setView] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "grid";
+    return (window.localStorage.getItem(VIEW_KEY) as ViewMode) || "grid";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(VIEW_KEY, view);
+  }, [view]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 250);
@@ -51,10 +71,12 @@ export default function Funds() {
     [funds.data?.count]
   );
 
+  const rows = funds.data?.rows ?? [];
+
   return (
     <div className="space-y-4 max-w-[1400px]">
-      <div className="as-card p-4">
-        <div className="relative">
+      <div className="as-card p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             value={search}
@@ -63,30 +85,45 @@ export default function Funds() {
             className="as-input pl-10"
           />
         </div>
+        <ViewToggle value={view} onChange={setView} />
       </div>
 
-      <div className="as-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-white/[0.02]">
-              <tr>
-                <th className="text-left px-4 py-3">Fund</th>
-                <th className="text-right px-4 py-3">Investments</th>
-                <th className="text-center px-4 py-3">Website</th>
-                <th className="text-center px-4 py-3">Twitter</th>
-              </tr>
-            </thead>
-            <tbody>
-              {funds.isLoading ? (
-                Array.from({ length: 10 }).map((_, i) => (
-                  <tr key={i} className="border-t border-white/[0.04]">
-                    <td colSpan={4} className="px-4 py-3"><div className="h-6 bg-white/[0.03] rounded animate-pulse" /></td>
-                  </tr>
-                ))
-              ) : funds.data?.rows.length === 0 ? (
-                <tr><td colSpan={4} className="text-center text-muted-foreground py-12">No funds found</td></tr>
-              ) : (
-                funds.data?.rows.map((f) => {
+      {funds.isLoading ? (
+        view === "grid" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="as-card p-4 h-32 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="as-card p-4 space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-10 bg-white/[0.03] rounded animate-pulse" />
+            ))}
+          </div>
+        )
+      ) : rows.length === 0 ? (
+        <div className="as-card p-12 text-center text-sm text-muted-foreground">No funds found</div>
+      ) : view === "grid" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {rows.map((f) => (
+            <FundCard key={f.slug} f={f} onClick={() => navigate(`/funds/${f.slug}`)} />
+          ))}
+        </div>
+      ) : (
+        <div className="as-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-white/[0.02]">
+                <tr>
+                  <th className="text-left px-4 py-3">Fund</th>
+                  <th className="text-right px-4 py-3">Investments</th>
+                  <th className="text-center px-4 py-3">Website</th>
+                  <th className="text-center px-4 py-3">Twitter</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((f) => {
                   const tw = normalizeTwitterUrl(f.twitter);
                   return (
                     <tr
@@ -114,21 +151,77 @@ export default function Funds() {
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.04] text-xs text-muted-foreground">
-          <span className="font-mono">
-            {funds.data?.count ?? 0} funds • Page {page + 1} / {totalPages}
-          </span>
-          <div className="flex gap-2">
-            <button className="as-btn as-btn-ghost py-1 px-3 text-xs disabled:opacity-40" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Prev</button>
-            <button className="as-btn as-btn-ghost py-1 px-3 text-xs disabled:opacity-40" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
+                })}
+              </tbody>
+            </table>
           </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+        <span className="font-mono">
+          {funds.data?.count ?? 0} funds • Page {page + 1} / {totalPages}
+        </span>
+        <div className="flex gap-2">
+          <button className="as-btn as-btn-ghost py-1 px-3 text-xs disabled:opacity-40" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Prev</button>
+          <button className="as-btn as-btn-ghost py-1 px-3 text-xs disabled:opacity-40" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
         </div>
       </div>
     </div>
+  );
+}
+
+function FundCard({ f, onClick }: { f: Fund; onClick: () => void }) {
+  const domain = extractDomain(f.website);
+  const logo = domain ? `https://cdn.brandfetch.io/${domain}` : null;
+  const tw = normalizeTwitterUrl(f.twitter);
+  const initial = (f.name?.trim()?.[0] || "?").toUpperCase();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="as-card p-4 text-left hover:border-white/20 transition-colors group"
+    >
+      <div className="flex items-start gap-3">
+        {logo ? (
+          <img
+            src={logo}
+            alt=""
+            className="w-10 h-10 rounded-lg bg-white/5 object-contain shrink-0"
+            onError={(e) => {
+              const img = e.target as HTMLImageElement;
+              img.style.display = "none";
+              const sib = img.nextElementSibling as HTMLElement | null;
+              if (sib) sib.style.display = "flex";
+            }}
+          />
+        ) : null}
+        <div
+          className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 items-center justify-center text-sm font-semibold text-primary shrink-0"
+          style={{ display: logo ? "none" : "flex" }}
+        >
+          {initial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-white truncate">{f.name}</div>
+          <div className="text-[11px] font-mono text-muted-foreground mt-0.5 inline-flex items-center gap-1">
+            <TrendingUp className="w-3 h-3" />
+            {f.investment_count ?? 0} investments
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        {f.website && (
+          <a href={f.website} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-muted-foreground hover:text-primary" aria-label="Website">
+            <Globe className="w-3.5 h-3.5" />
+          </a>
+        )}
+        {tw && (
+          <a href={tw} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-muted-foreground hover:text-primary" aria-label="Twitter">
+            <Twitter className="w-3.5 h-3.5" />
+          </a>
+        )}
+      </div>
+    </button>
   );
 }

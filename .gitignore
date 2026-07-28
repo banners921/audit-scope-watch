@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets & local-only (never commit)
+.env
+.env.*
+MIGRATION_PACKAGE/
+STATUS_AUTO.md
+.claude/
+scripts/

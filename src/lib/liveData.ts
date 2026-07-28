@@ -34,6 +34,49 @@ export async function fetchLlamaTvl(slug: string): Promise<number | null> {
   }
 }
 
+/**
+ * Fetch monthly TVL history (oldest→newest) for a DefiLlama protocol slug, last `months` months.
+ * Aggregates across real chains (skipping `-staking`, `-borrowed`, `-pool2` sub-buckets).
+ * Returns N numbers, padded with 0 for months without data.
+ */
+export async function fetchLlamaTvlHistory(slug: string, months = 12): Promise<number[]> {
+  try {
+    const r = await fetch(`https://api.llama.fi/protocol/${encodeURIComponent(slug)}`);
+    if (!r.ok) return new Array(months).fill(0);
+    const data = await r.json();
+    const chainTvls: Record<string, { tvl?: { date: number; totalLiquidityUSD: number }[] }> = data.chainTvls || {};
+    // For each real chain, build map of yyyy-mm → tvl on the LAST day we saw in that month.
+    const monthlyByChain = new Map<string, Map<string, number>>();
+    for (const [chain, val] of Object.entries(chainTvls)) {
+      if (chain.includes("-")) continue;
+      const series = val?.tvl || [];
+      const inner = new Map<string, number>();
+      for (const point of series) {
+        const d = new Date(Number(point.date) * 1000);
+        const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+        inner.set(key, Number(point.totalLiquidityUSD || 0)); // overwrite => last day wins
+      }
+      monthlyByChain.set(chain, inner);
+    }
+    // Sum across chains per month
+    const totalByMonth = new Map<string, number>();
+    for (const inner of monthlyByChain.values()) {
+      for (const [k, v] of inner) totalByMonth.set(k, (totalByMonth.get(k) || 0) + v);
+    }
+    // Build array oldest → newest for the last `months` months
+    const out: number[] = [];
+    const now = new Date();
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      out.push(totalByMonth.get(key) || 0);
+    }
+    return out;
+  } catch {
+    return new Array(months).fill(0);
+  }
+}
+
 export async function fetchLlamaProtocol(slug: string): Promise<{ tvl: number | null; change24h: number | null }> {
   try {
     const r = await fetch(`https://api.llama.fi/protocol/${encodeURIComponent(slug)}`);

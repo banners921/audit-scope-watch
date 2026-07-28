@@ -13,7 +13,7 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (session) navigate("/dashboard", { replace: true });
+    if (session) navigate("/home", { replace: true });
   }, [session, navigate]);
 
   async function onSubmit(e: FormEvent) {
@@ -30,7 +30,7 @@ export default function Signup() {
       return;
     }
     toast.success("Account created. Check your email if confirmation is required.");
-    navigate("/dashboard");
+    navigate("/onboarding");
   }
 
   return (
