@@ -14,7 +14,7 @@ import {
   Award,
   Banknote,
   Home,
-  Star,
+  Radar,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Logo } from "./Logo";
@@ -40,12 +40,11 @@ const TITLES: Record<string, string> = {
 
 const NAV = [
   { to: "/dashboard", label: "Home", icon: Home },
+  { to: "/radar", label: "Audit Radar", icon: Radar },
   { to: "/audit-reports", label: "Audits", icon: ShieldCheck },
   { to: "/auditors", label: "Auditors", icon: Award },
   { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/funding-rounds", label: "Funding rounds", icon: Banknote },
-  { to: "/funds", label: "Funds", icon: Wallet },
-  { to: "/watchlist", label: "Watchlist", icon: Star },
 ] as const;
 
 export function AppLayout({ children }: { children: ReactNode }) {
