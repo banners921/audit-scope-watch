@@ -273,8 +273,29 @@ function NotificationCard({ tier, profile }: { tier: PlanTier; profile: any }) {
   const [slackUrl, setSlackUrl] = useState(profile?.slack_webhook_url ?? "");
   const [tgToken, setTgToken] = useState(profile?.telegram_bot_token ?? "");
   const [tgChatId, setTgChatId] = useState(profile?.telegram_chat_id ?? "");
+  const [testing, setTesting] = useState(false);
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  async function sendSlackTest(url: string) {
+    if (!url.trim()) { toast.error("Paste your Slack webhook URL first"); return; }
+    setTesting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch("https://qktjbtmcjrwzmtqnszbq.supabase.co/functions/v1/slack-notify", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token ?? ""}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ webhook_url: url.trim(), text: "✅ AuditScope test alert — your Slack notifications are working." }),
+      });
+      const j = await r.json();
+      if (j.ok) toast.success("Test sent — check your Slack channel");
+      else toast.error(j.error || "Failed to send");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send");
+    } finally {
+      setTesting(false);
+    }
+  }
 
   const saveMut = useMutation({
     mutationFn: async () => {
@@ -320,9 +341,9 @@ function NotificationCard({ tier, profile }: { tier: PlanTier; profile: any }) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
         {([
-          { v: "slack", l: "Slack", i: <Slack className="w-3.5 h-3.5" />, disabled: true, soon: true },
+          { v: "slack", l: "Slack", i: <Slack className="w-3.5 h-3.5" /> },
           { v: "telegram", l: "Telegram", i: <Send className="w-3.5 h-3.5" /> },
-          { v: "both", l: "Both", i: <Bell className="w-3.5 h-3.5" />, disabled: true, soon: true },
+          { v: "both", l: "Both", i: <Bell className="w-3.5 h-3.5" /> },
           { v: "none", l: "Off", i: null },
         ] as const).map((opt) => (
           <button
@@ -345,7 +366,14 @@ function NotificationCard({ tier, profile }: { tier: PlanTier; profile: any }) {
       {(channel === "slack" || channel === "both") && (
         <div>
           <label className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1">Slack webhook</label>
-          <input type="url" value={slackUrl} onChange={(e) => setSlackUrl(e.target.value)} placeholder="https://hooks.slack.com/services/..." className="w-full px-3 py-2 text-[12.5px] bg-white/[0.03] border rounded text-foreground font-mono" style={{ borderColor: "rgb(var(--line-1) / var(--line-1-alpha))" }} />
+          <div className="flex gap-2">
+            <input type="url" value={slackUrl} onChange={(e) => setSlackUrl(e.target.value)} placeholder="https://hooks.slack.com/services/..." className="flex-1 px-3 py-2 text-[12.5px] bg-white/[0.03] border rounded text-foreground font-mono" style={{ borderColor: "rgb(var(--line-1) / var(--line-1-alpha))" }} />
+            <button type="button" onClick={() => sendSlackTest(slackUrl)} disabled={testing}
+              className="px-3 py-2 rounded-md border border-primary/30 bg-primary/10 text-primary text-[12px] font-semibold hover:bg-primary/20 disabled:opacity-50 whitespace-nowrap">
+              {testing ? "Sending…" : "Send test"}
+            </button>
+          </div>
+          <p className="text-[10.5px] text-muted-foreground mt-1">Create an Incoming Webhook in your Slack workspace, paste the URL, and hit Send test.</p>
         </div>
       )}
       {(channel === "telegram" || channel === "both") && (
