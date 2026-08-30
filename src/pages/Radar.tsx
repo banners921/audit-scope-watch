@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Radar as RadarIcon, AlertTriangle, Sparkles, Clock, Banknote, ArrowUpRight } from "lucide-react";
@@ -11,74 +11,78 @@ type Lead = {
   raised_usd: number | null; hacked_recently: boolean; score: number; lead_type: string; reasons: string[];
 };
 
-const CATS = ["All", "DeFi", "DEX", "Lending", "Infrastructure", "Real World Assets", "Stablecoin", "Liquid Staking", "Derivatives", "Payments"];
-
 const TYPE_META: Record<string, { cls: string; icon: any }> = {
-  "Recently hacked": { cls: "text-rose-300 bg-rose-500/12 border-rose-500/30", icon: AlertTriangle },
-  "Funded, never audited": { cls: "text-emerald-300 bg-emerald-500/12 border-emerald-500/30", icon: Sparkles },
-  "Overdue for re-audit": { cls: "text-amber-300 bg-amber-500/12 border-amber-500/30", icon: Clock },
+  "Recently exploited": { cls: "text-rose-300 bg-rose-500/12 border-rose-500/30", icon: AlertTriangle },
+  "Funded, no audit on file": { cls: "text-emerald-300 bg-emerald-500/12 border-emerald-500/30", icon: Sparkles },
   "Freshly funded": { cls: "text-sky-300 bg-sky-500/12 border-sky-500/30", icon: Banknote },
+  "Overdue for re-audit": { cls: "text-amber-300 bg-amber-500/12 border-amber-500/30", icon: Clock },
   "Audit dryspell": { cls: "text-muted-foreground bg-white/[0.04] border-white/10", icon: Clock },
 };
-const LEAD_TYPES = ["All leads", "Recently hacked", "Funded, never audited", "Overdue for re-audit", "Freshly funded"];
+const TYPES = ["All", "Recently exploited", "Freshly funded", "Funded, no audit on file", "Overdue for re-audit"];
 
 export default function Radar() {
+  const [type, setType] = useState("All");
   const [cat, setCat] = useState("All");
-  const [type, setType] = useState("All leads");
 
   const q = useQuery({
-    queryKey: ["audit-radar-v2", cat],
+    queryKey: ["audit-radar-v3"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("audit_radar", { p_limit: 100, p_category: cat === "All" ? null : cat });
+      const { data, error } = await supabase.rpc("audit_radar", { p_limit: 200, p_category: null });
       if (error) throw error;
       return (data ?? []) as Lead[];
     },
   });
+  const all = q.data ?? [];
 
-  const leads = (q.data ?? []).filter((l) => type === "All leads" || l.lead_type === type);
+  // categories that actually have leads, by frequency
+  const cats = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of all) if (l.category) m.set(l.category, (m.get(l.category) ?? 0) + 1);
+    return ["All", ...Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(([c]) => c)];
+  }, [all]);
+
+  const leads = all.filter((l) => (type === "All" || l.lead_type === type) && (cat === "All" || l.category === cat));
 
   return (
-    <div className="max-w-[1040px] mx-auto space-y-5">
+    <div className="max-w-[1040px] mx-auto space-y-4">
       <header>
         <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-primary inline-flex items-center gap-1.5">
           <RadarIcon className="w-3.5 h-3.5" /> Audit Radar
         </div>
         <h1 className="text-2xl font-semibold text-foreground tracking-tight mt-0.5">Who to pitch this week</h1>
         <p className="text-[13px] text-muted-foreground mt-1 max-w-[640px]">
-          Protocols that likely need a security review right now — ranked by urgency, with the reason and their current auditor to displace.
+          Smart-contract protocols that likely need a security review now — with the reason and their current auditor to displace.
         </p>
       </header>
 
-      {/* lead-type filter */}
-      <div className="flex flex-wrap gap-1.5">
-        {LEAD_TYPES.map((t) => (
-          <button key={t} onClick={() => setType(t)}
-            className={`text-[11.5px] px-2.5 py-1 rounded-md border ${type === t ? "border-primary/40 bg-primary/[0.08] text-primary" : "border-white/[0.06] text-muted-foreground hover:text-foreground"}`}>
-            {t}
-          </button>
-        ))}
+      {/* one clean filter row: lead-type chips + category dropdown */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex flex-wrap gap-1.5">
+          {TYPES.map((t) => (
+            <button key={t} onClick={() => setType(t)}
+              className={`text-[11.5px] px-2.5 py-1.5 rounded-md border ${type === t ? "border-primary/40 bg-primary/[0.08] text-primary" : "border-white/[0.06] text-muted-foreground hover:text-foreground"}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+        <select value={cat} onChange={(e) => setCat(e.target.value)}
+          className="text-[12px] bg-white/[0.03] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-muted-foreground hover:text-foreground">
+          {cats.map((c) => <option key={c} value={c}>{c === "All" ? "All sectors" : c}</option>)}
+        </select>
       </div>
-      {/* category filter */}
-      <div className="flex flex-wrap gap-1.5">
-        {CATS.map((c) => (
-          <button key={c} onClick={() => setCat(c)}
-            className={`text-[10.5px] px-2 py-1 rounded-md border ${cat === c ? "border-primary/40 bg-primary/[0.08] text-primary" : "border-white/[0.06] text-muted-foreground hover:text-foreground"}`}>
-            {c}
-          </button>
-        ))}
-      </div>
+
+      <div className="text-[11px] text-muted-foreground">{leads.length} leads</div>
 
       {q.isLoading && <div className="as-card p-6 text-center text-sm text-muted-foreground">Scanning…</div>}
       {!q.isLoading && leads.length === 0 && <div className="as-card p-6 text-center text-sm text-muted-foreground">No leads for this filter.</div>}
 
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {leads.map((l, i) => {
           const meta = TYPE_META[l.lead_type] || TYPE_META["Audit dryspell"];
           const Icon = meta.icon;
           return (
             <Link key={l.slug} to={`/protocol/${l.slug}`}
               className="as-card p-4 flex items-center gap-4 hover:border-primary/40 transition-colors group">
-              <div className="text-[11px] font-mono text-muted-foreground/40 w-5 text-right shrink-0">{i + 1}</div>
               <BrandLogo name={l.name} url={l.url} logo={l.logo} className="w-11 h-11 rounded-lg shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -109,10 +113,6 @@ export default function Radar() {
             </Link>
           );
         })}
-      </div>
-
-      <div className="text-[11px] text-muted-foreground text-center pt-2">
-        Signals: recent hacks · funding · audit cadence. GitHub activity + live news coming soon.
       </div>
     </div>
   );
