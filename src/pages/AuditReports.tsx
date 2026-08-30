@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Search, ShieldCheck, FileText, ExternalLink, Building2, Award } from "lucide-react";
+import { Search, FileText, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { BrandLogo } from "@/components/BrandLogo";
+import { ViewToggle, type ViewMode, loadViewMode, saveViewMode } from "@/components/ViewToggle";
 
 const PAGE_SIZE = 24;
+const STORAGE_KEY = "audits";
 
 type Row = {
   id: string; audit_firm: string | null; audit_date: string | null; audit_type: string | null;
   protocol_name: string | null; company_slug: string | null; report_url: string | null;
   findings_critical: number | null; findings_high: number | null; findings_medium: number | null; findings_low: number | null;
-  company_name?: string; company_logo?: string | null;
+  company_name?: string; company_logo?: string | null; company_url?: string | null;
 };
 
 const SEV = [
@@ -20,24 +23,17 @@ const SEV = [
   { key: "findings_low", label: "L", cls: "text-sky-300 bg-sky-500/10 border-sky-500/25" },
 ] as const;
 
+function findingsOf(r: Row) {
+  return SEV.map((s) => ({ ...s, n: (r[s.key as keyof Row] as number) || 0 })).filter((s) => s.n > 0);
+}
+
 export default function AuditReports() {
   const [q, setQ] = useState("");
   const [firm, setFirm] = useState<string>("all");
   const [page, setPage] = useState(0);
+  const [view, setView] = useState<ViewMode>(() => loadViewMode(STORAGE_KEY, "grid"));
+  const setViewPersist = (v: ViewMode) => { setView(v); saveViewMode(STORAGE_KEY, v); };
 
-  // firm logos (once)
-  const firmsQ = useQuery({
-    queryKey: ["audit-firm-logos"],
-    staleTime: 30 * 60_000,
-    queryFn: async () => {
-      const { data } = await supabase.from("audit_firm_meta").select("firm_name,logo_url");
-      const m = new Map<string, string>();
-      for (const r of (data ?? []) as any[]) if (r.logo_url) m.set(r.firm_name, r.logo_url);
-      return m;
-    },
-  });
-
-  // firm dropdown list (top firms by audit count)
   const firmListQ = useQuery({
     queryKey: ["audit-firm-list"],
     staleTime: 30 * 60_000,
@@ -48,7 +44,7 @@ export default function AuditReports() {
   });
 
   const rowsQ = useQuery({
-    queryKey: ["audits-cards", q, firm, page],
+    queryKey: ["audits-view", q, firm, page],
     keepPreviousData: true,
     queryFn: async () => {
       let query = supabase
@@ -61,21 +57,22 @@ export default function AuditReports() {
       const { data, count, error } = await query;
       if (error) throw error;
       const rows = (data ?? []) as Row[];
-      // company logos for this page
       const slugs = Array.from(new Set(rows.map((r) => r.company_slug).filter(Boolean))) as string[];
       const cmap = new Map<string, any>();
       if (slugs.length) {
-        const { data: comps } = await supabase.from("companies").select("slug,name,logo").in("slug", slugs);
+        const { data: comps } = await supabase.from("companies").select("slug,name,logo,url").in("slug", slugs);
         for (const c of (comps ?? []) as any[]) cmap.set(c.slug, c);
       }
       return {
-        rows: rows.map((r) => ({ ...r, company_name: cmap.get(r.company_slug!)?.name || r.protocol_name || r.company_slug, company_logo: cmap.get(r.company_slug!)?.logo || null })),
+        rows: rows.map((r) => {
+          const c = cmap.get(r.company_slug!);
+          return { ...r, company_name: c?.name || r.protocol_name || r.company_slug, company_logo: c?.logo || null, company_url: c?.url || null };
+        }),
         count: count ?? 0,
       };
     },
   });
 
-  const firmLogos = firmsQ.data;
   const rows = rowsQ.data?.rows ?? [];
   const total = rowsQ.data?.count ?? 0;
 
@@ -89,12 +86,13 @@ export default function AuditReports() {
           </h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <ViewToggle value={view} onChange={setViewPersist} />
           <select value={firm} onChange={(e) => { setFirm(e.target.value); setPage(0); }}
-            className="text-[12.5px] bg-white/[0.03] border border-white/[0.08] rounded-md px-2.5 py-2 text-muted-foreground hover:text-foreground max-w-[180px]">
+            className="text-[12.5px] bg-white/[0.03] border border-white/[0.08] rounded-md px-2.5 py-2 text-muted-foreground hover:text-foreground max-w-[170px]">
             <option value="all">All auditors</option>
             {(firmListQ.data ?? []).map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
-          <div className="relative w-60">
+          <div className="relative w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <input className="as-input pl-7 py-2 text-[12.5px]" placeholder="Search protocol or auditor…"
               value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
@@ -105,46 +103,98 @@ export default function AuditReports() {
       {rowsQ.isLoading && <div className="as-card p-6 text-center text-sm text-muted-foreground">Loading…</div>}
       {!rowsQ.isLoading && rows.length === 0 && <div className="as-card p-8 text-center text-sm text-muted-foreground">No audits match.</div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {rows.map((r) => {
-          const findings = SEV.map((s) => ({ ...s, n: (r[s.key as keyof Row] as number) || 0 })).filter((s) => s.n > 0);
-          return (
-            <div key={r.id} className="as-card p-4 flex flex-col gap-3 hover:border-primary/40 transition-colors">
-              {/* protocol */}
-              <Link to={`/protocol/${r.company_slug}`} className="flex items-center gap-3 group">
-                <Logo src={r.company_logo} name={r.company_name} kind="company" />
-                <div className="min-w-0">
-                  <div className="text-[14px] font-semibold text-foreground group-hover:text-primary truncate">{r.company_name}</div>
-                  <div className="text-[11px] text-muted-foreground">{r.audit_date || "date unknown"}</div>
+      {/* GRID */}
+      {view === "grid" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {rows.map((r) => {
+            const findings = findingsOf(r);
+            return (
+              <div key={r.id} className="as-card p-4 flex flex-col gap-3 hover:border-primary/40 transition-colors">
+                <Link to={`/protocol/${r.company_slug}`} className="flex items-center gap-3 group">
+                  <BrandLogo name={r.company_name || "?"} url={r.company_url} logo={r.company_logo} className="w-10 h-10 rounded-lg" />
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-semibold text-foreground group-hover:text-primary truncate">{r.company_name}</div>
+                    <div className="text-[11px] text-muted-foreground">{r.audit_date || "date unknown"}</div>
+                  </div>
+                </Link>
+                <Link to={`/auditors/${encodeURIComponent(r.audit_firm || "")}`} className="flex items-center gap-2 group/firm">
+                  <BrandLogo name={r.audit_firm || "Unknown"} className="w-6 h-6 rounded-md" />
+                  <span className="text-[12px] text-muted-foreground group-hover/firm:text-primary truncate">
+                    audited by <span className="text-foreground/90 font-medium">{r.audit_firm || "Unknown"}</span>
+                  </span>
+                </Link>
+                <div className="flex items-center justify-between pt-1 mt-auto border-t border-white/[0.05]">
+                  <div className="flex items-center gap-1">
+                    {findings.length > 0 ? findings.map((s) => (
+                      <span key={s.key} className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${s.cls}`}>{s.n}{s.label}</span>
+                    )) : <span className="text-[10.5px] text-muted-foreground/50">findings not parsed</span>}
+                  </div>
+                  {r.report_url ? (
+                    <a href={r.report_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-medium">
+                      <FileText className="w-3 h-3" /> Report <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  ) : <span className="text-[10.5px] text-muted-foreground/40">no report</span>}
                 </div>
-              </Link>
-
-              {/* auditor */}
-              <Link to={`/auditors/${encodeURIComponent(r.audit_firm || "")}`} className="flex items-center gap-2 group/firm">
-                <Logo src={firmLogos?.get(r.audit_firm || "")} name={r.audit_firm} kind="firm" sm />
-                <span className="text-[12px] text-muted-foreground group-hover/firm:text-primary truncate">
-                  audited by <span className="text-foreground/90 font-medium">{r.audit_firm || "Unknown"}</span>
-                </span>
-              </Link>
-
-              {/* footer: findings + report */}
-              <div className="flex items-center justify-between pt-1 mt-auto border-t border-white/[0.05]">
-                <div className="flex items-center gap-1">
-                  {findings.length > 0 ? findings.map((s) => (
-                    <span key={s.key} className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${s.cls}`}>{s.n}{s.label}</span>
-                  )) : <span className="text-[10.5px] text-muted-foreground/50">findings not parsed</span>}
-                </div>
-                {r.report_url ? (
-                  <a href={r.report_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-medium">
-                    <FileText className="w-3 h-3" /> Report <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                ) : <span className="text-[10.5px] text-muted-foreground/40">no report</span>}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* LIST */}
+      {view === "list" && (
+        <div className="as-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="border-b border-white/[0.06] text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2.5">Protocol</th>
+                  <th className="px-3 py-2.5">Auditor</th>
+                  <th className="px-3 py-2.5">Date</th>
+                  <th className="px-3 py-2.5">Findings</th>
+                  <th className="px-3 py-2.5 text-right">Report</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const findings = findingsOf(r);
+                  return (
+                    <tr key={r.id} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                      <td className="px-3 py-2">
+                        <Link to={`/protocol/${r.company_slug}`} className="flex items-center gap-2 group">
+                          <BrandLogo name={r.company_name || "?"} url={r.company_url} logo={r.company_logo} className="w-6 h-6 rounded" />
+                          <span className="text-foreground group-hover:text-primary truncate max-w-[200px] font-medium">{r.company_name}</span>
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Link to={`/auditors/${encodeURIComponent(r.audit_firm || "")}`} className="flex items-center gap-2 group">
+                          <BrandLogo name={r.audit_firm || "Unknown"} className="w-5 h-5 rounded" />
+                          <span className="text-muted-foreground group-hover:text-primary truncate max-w-[150px]">{r.audit_firm || "Unknown"}</span>
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">{r.audit_date || "—"}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          {findings.length > 0 ? findings.map((s) => (
+                            <span key={s.key} className={`text-[9.5px] px-1 py-0.5 rounded border font-mono ${s.cls}`}>{s.n}{s.label}</span>
+                          )) : <span className="text-muted-foreground/40">—</span>}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {r.report_url ? (
+                          <a href={r.report_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                            <FileText className="w-3 h-3" /> <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ) : <span className="text-muted-foreground/40 text-[10.5px]">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {total > PAGE_SIZE && (
         <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2">
@@ -155,22 +205,6 @@ export default function AuditReports() {
             className="px-3 py-1.5 rounded-md border border-white/[0.06] disabled:opacity-40 hover:bg-white/[0.03]">Next →</button>
         </div>
       )}
-    </div>
-  );
-}
-
-function Logo({ src, name, kind, sm }: { src?: string | null; name?: string | null; kind: "company" | "firm"; sm?: boolean }) {
-  const size = sm ? "w-6 h-6" : "w-10 h-10";
-  const Icon = kind === "firm" ? Award : Building2;
-  return (
-    <div className={`${size} shrink-0 rounded-lg bg-white/[0.05] flex items-center justify-center overflow-hidden`}>
-      {src ? (
-        <img src={src} alt="" className="w-full h-full object-cover"
-          onError={(e) => { const t = e.target as HTMLImageElement; t.style.display = "none"; (t.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
-      ) : null}
-      <span style={src ? { display: "none" } : {}} className="text-[11px] font-bold text-muted-foreground">
-        {name ? name[0].toUpperCase() : <Icon className="w-4 h-4" />}
-      </span>
     </div>
   );
 }
