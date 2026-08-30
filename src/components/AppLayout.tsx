@@ -39,8 +39,8 @@ const TITLES: Record<string, string> = {
 };
 
 const NAV = [
-  { to: "/dashboard", label: "Home", icon: Home },
   { to: "/radar", label: "Audit Radar", icon: Radar },
+  { section: "Research" },
   { to: "/audit-reports", label: "Audits", icon: ShieldCheck },
   { to: "/auditors", label: "Auditors", icon: Award },
   { to: "/companies", label: "Companies", icon: Building2 },
@@ -142,10 +142,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="p-3 space-y-1 mt-2">
-          {NAV.map((n) => {
+          {NAV.map((n: any, idx) => {
+            if (n.section) {
+              return !collapsed ? (
+                <div key={`sec-${idx}`} className="px-3 pt-4 pb-1 text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground/60 font-semibold">
+                  {n.section}
+                </div>
+              ) : <div key={`sec-${idx}`} className="h-3" />;
+            }
             const Icon = n.icon;
-            const isWatch = n.to === "/watchlist";
-            const watchN = watchlistCount.data ?? 0;
             return (
               <NavLink
                 key={n.to}
@@ -155,14 +160,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 title={collapsed ? n.label : undefined}
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                {!collapsed && (
-                  <span className="font-medium flex-1 flex items-center justify-between">
-                    {n.label}
-                    {isWatch && watchN > 0 && (
-                      <span className="text-[10px] font-mono text-primary tabular-nums">{watchN}</span>
-                    )}
-                  </span>
-                )}
+                {!collapsed && <span className="font-medium flex-1">{n.label}</span>}
               </NavLink>
             );
           })}

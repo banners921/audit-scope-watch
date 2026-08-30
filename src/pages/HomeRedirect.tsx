@@ -15,5 +15,5 @@ export default function HomeRedirect() {
   if (!profileMode) {
     return <Navigate to="/onboarding" replace />;
   }
-  return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/radar" replace />;
 }

@@ -36,7 +36,7 @@ export default function Landing() {
   const s = statsQ.data;
   const n = (x?: number) => (x == null ? "—" : x.toLocaleString());
 
-  const primaryHref = user ? "/dashboard" : "/signup";
+  const primaryHref = user ? "/radar" : "/signup";
   const primaryLabel = user ? "Open app" : "Start free";
 
   const CARDS = [
@@ -60,7 +60,7 @@ export default function Landing() {
           <div className="flex items-center gap-2">
             <Link to="/docs" className="text-[12.5px] text-muted-foreground hover:text-foreground px-3 py-1.5 hidden sm:inline">API docs</Link>
             {user ? (
-              <Link to="/dashboard" className="text-[12.5px] inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
+              <Link to="/radar" className="text-[12.5px] inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
                 Open app <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             ) : (
