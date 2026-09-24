@@ -30,3 +30,6 @@ MIGRATION_PACKAGE/
 STATUS_AUTO.md
 .claude/
 scripts/
+
+# Local-only technical briefing — contains security notes, never publish (repo is public)
+AUDITSCOPE_BRIEFING.md
