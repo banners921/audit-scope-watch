@@ -17,6 +17,7 @@ export default function Docs() {
             { id: "overview", label: "Overview" },
             { id: "auth", label: "Authentication" },
             { id: "audits", label: "/v1/audits" },
+            { id: "repo", label: "/v1/audits?repo=" },
             { id: "hacks", label: "/v1/hacks" },
             { id: "funding", label: "/v1/funding-rounds" },
             { id: "limits", label: "Rate limits" },
@@ -72,6 +73,7 @@ curl '${BASE_URL}/audits?limit=10' \\
               { name: "since", type: "date (YYYY-MM-DD)", desc: "Filter audit_date >= since" },
               { name: "chain", type: "string", desc: 'e.g. "Ethereum", "Solana", "Arbitrum"' },
               { name: "limit", type: "int (1–200)", desc: "default 50" },
+              { name: "repo", type: "string", desc: 'GitHub repo — "github.com/org/repo", a full URL, or bare "org/repo". Switches to codebase-level lookup; see below.' },
               { name: "cursor", type: "string", desc: "Pass next_cursor from prior response" },
             ]}
             example={`curl '${BASE_URL}/audits?firm=Cyfrin&since=2026-06-01&limit=10' \\
@@ -101,6 +103,44 @@ curl '${BASE_URL}/audits?limit=10' \\
   ],
   "next_cursor": "2026-06-30T22:30:30.714Z",
   "count": 1
+}`}
+          />
+
+          <Endpoint
+            id="repo"
+            method="GET"
+            path="/v1/audits?repo="
+            desc="Codebase-level lookup. Pass a GitHub repo and get every audit of that codebase, including the exact commit hash each firm reviewed. If no audit is pinned to that specific repo, we resolve it to the owning protocol and return that protocol's audit history instead — so a connected repo always gets an answer. Every row is labelled match_type: “repo” (exact) or “company” (same protocol)."
+            baseUrl={BASE_URL}
+            params={[
+              { name: "repo", type: "string (required)", desc: 'Accepts "github.com/org/repo", a full https URL, bare "org/repo", .git suffixes, and /tree/<sha> links.' },
+              { name: "include_company", type: "bool", desc: "false suppresses the protocol-level fallback and returns exact repo matches only. Default true." },
+              { name: "limit", type: "int (1\u2013200)", desc: "default 50" },
+            ]}
+            example={`curl '${BASE_URL}/audits?repo=github.com/1inch/limit-order-protocol' \\
+  -H 'X-Api-Key: ak_live_...'`}
+            response={`{
+  "match": "repo",
+  "resolved_company_slug": "1inch",
+  "resolved_via": "exact_repo_audit",
+  "counts": { "exact_repo": 24, "company_level": 0, "total": 24 },
+  "data": [
+    {
+      "match_type": "repo",
+      "protocol_name": "1inch FeeCharging",
+      "company_slug": "1inch",
+      "audit_firm": "Astrasec",
+      "audit_date": "2025-05-19",
+      "report_url": "https://raw.githubusercontent.com/astrasecai/...",
+      "findings_critical": 0,
+      "findings_high": 0,
+      "findings_medium": 0,
+      "findings_low": 1,
+      "audited_repo_url": "https://github.com/1inch/limit-order-protocol",
+      "audited_commit_hash": "a304ab7",
+      "commit_hash_status": "valid"
+    }
+  ]
 }`}
           />
 
