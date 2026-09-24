@@ -1,12 +1,13 @@
 // Helpers for live external data (DefiLlama + GitHub)
 
-export const GITHUB_TOKEN = "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";
+// Never put a real token here: this file ships in the public client bundle.
+// Leave empty; route authenticated GitHub calls through an edge function.
+export const GITHUB_TOKEN = "";
 
 export function ghHeaders(): HeadersInit {
-  return {
-    Authorization: `token ${GITHUB_TOKEN}`,
-    Accept: "application/vnd.github+json",
-  };
+  const h: Record<string, string> = { Accept: "application/vnd.github+json" };
+  if (GITHUB_TOKEN) h.Authorization = `token ${GITHUB_TOKEN}`;
+  return h;
 }
 
 export function parseGithubRepo(url: string | null | undefined): { owner: string; repo: string } | null {

@@ -4,7 +4,6 @@ import { formatDistanceToNow } from "date-fns";
 import { LangBadge } from "@/components/LangBadge";
 
 const GH_HEADERS: HeadersInit = {
-  Authorization: "Bearer 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",
   Accept: "application/vnd.github.v3+json",
 };
 
