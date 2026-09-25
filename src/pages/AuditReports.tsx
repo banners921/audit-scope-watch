@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Search, FileText, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -43,9 +43,27 @@ export default function AuditReports() {
     },
   });
 
+  // Firm logos live in the public firm-logos storage bucket (re-hosted, never
+  // hotlinked). BrandLogo falls back to Brandfetch -> favicon -> letter chip.
+  const firmLogosQ = useQuery({
+    queryKey: ["firm-logo-map"],
+    staleTime: 60 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("audit_firm_meta")
+        .select("firm_name,logo_url")
+        .not("logo_url", "is", null);
+      const m: Record<string, string> = {};
+      for (const r of (data ?? []) as Array<{ firm_name: string; logo_url: string }>) {
+        if (r.logo_url) m[r.firm_name] = r.logo_url;
+      }
+      return m;
+    },
+  });
+
   const rowsQ = useQuery({
     queryKey: ["audits-view", q, firm, page],
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       let query = supabase
         .from("audit_history")
@@ -118,7 +136,7 @@ export default function AuditReports() {
                   </div>
                 </Link>
                 <Link to={`/auditors/${encodeURIComponent(r.audit_firm || "")}`} className="flex items-center gap-2 group/firm">
-                  <BrandLogo name={r.audit_firm || "Unknown"} className="w-6 h-6 rounded-md" />
+                  <BrandLogo name={r.audit_firm || "Unknown"} logo={r.audit_firm ? firmLogosQ.data?.[r.audit_firm] : null} className="w-6 h-6 rounded-md" />
                   <span className="text-[12px] text-muted-foreground group-hover/firm:text-primary truncate">
                     audited by <span className="text-foreground/90 font-medium">{r.audit_firm || "Unknown"}</span>
                   </span>
@@ -168,7 +186,7 @@ export default function AuditReports() {
                       </td>
                       <td className="px-3 py-2">
                         <Link to={`/auditors/${encodeURIComponent(r.audit_firm || "")}`} className="flex items-center gap-2 group">
-                          <BrandLogo name={r.audit_firm || "Unknown"} className="w-5 h-5 rounded" />
+                          <BrandLogo name={r.audit_firm || "Unknown"} logo={r.audit_firm ? firmLogosQ.data?.[r.audit_firm] : null} className="w-5 h-5 rounded" />
                           <span className="text-muted-foreground group-hover:text-primary truncate max-w-[150px]">{r.audit_firm || "Unknown"}</span>
                         </Link>
                       </td>
