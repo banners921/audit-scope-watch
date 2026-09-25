@@ -45,6 +45,7 @@ const NAV = [
   { to: "/auditors", label: "Auditors", icon: Award },
   { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/funding-rounds", label: "Funding rounds", icon: Banknote },
+  { to: "/funds", label: "Funds", icon: Wallet },
 ] as const;
 
 export function AppLayout({ children }: { children: ReactNode }) {

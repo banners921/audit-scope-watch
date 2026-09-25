@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Globe, Twitter, Linkedin, TrendingUp, Building2 } from "lucide-react";
+import { ArrowLeft, Globe, Twitter, Linkedin, TrendingUp, Building2, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { normalizeTwitterUrl } from "@/lib/format";
 import { CompanyLogo } from "@/components/CompanyLogo";
@@ -27,6 +27,8 @@ type CompanyLite = {
   name: string;
   logo: string | null;
   category: string | null;
+  audit_count: number | null;
+  last_audit_date: string | null;
 };
 
 const ROUNDS_VIEW_KEY = "as_fund_rounds_view";
@@ -113,7 +115,7 @@ export default function FundDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companies")
-        .select("slug,name,logo,category")
+        .select("slug,name,logo,category,audit_count,last_audit_date")
         .in("slug", portfolioSlugs);
       if (error) throw error;
       const map = new Map<string, CompanyLite>();
@@ -218,6 +220,20 @@ export default function FundDetail() {
                     <span className="text-muted-foreground">{e.rounds} round{e.rounds === 1 ? "" : "s"}</span>
                     <span className="text-teal-400">{fmtAmount(e.totalRaised)}</span>
                   </div>
+                  <div className="mt-2 pt-2 border-t border-white/[0.06] text-[11px]">
+                    {c ? (
+                      (c.audit_count ?? 0) > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 text-primary font-semibold">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          {c.audit_count} audit{c.audit_count === 1 ? "" : "s"}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">No audits on file</span>
+                      )
+                    ) : (
+                      <span className="text-muted-foreground/70">Not matched in AuditScope</span>
+                    )}
+                  </div>
                 </Link>
               );
             })}
@@ -229,6 +245,7 @@ export default function FundDetail() {
                 <tr>
                   <th className="text-left px-4 py-3">Company</th>
                   <th className="text-left px-4 py-3">Category</th>
+                  <th className="text-right px-4 py-3">Audits</th>
                   <th className="text-right px-4 py-3">Rounds</th>
                   <th className="text-right px-4 py-3">Total raised</th>
                 </tr>
@@ -249,6 +266,12 @@ export default function FundDetail() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{c?.category || "—"}</td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">
+                        {c ? ((c.audit_count ?? 0) > 0
+                          ? <span className="text-primary font-semibold">{c.audit_count}</span>
+                          : <span className="text-muted-foreground">0</span>)
+                          : <span className="text-muted-foreground/70">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-right text-muted-foreground font-mono">{e.rounds}</td>
                       <td className="px-4 py-3 text-right font-mono text-teal-400">{fmtAmount(e.totalRaised)}</td>
                     </tr>
