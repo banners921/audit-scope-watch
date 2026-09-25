@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { SocialLinks } from "@/components/SocialLinks";
 import { ArrowLeft, ShieldCheck, ExternalLink, Users, Calendar, Github, FileCode, Boxes, FileText, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
@@ -93,10 +94,10 @@ export default function AuditorDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("audit_firm_meta")
-        .select("homepage_url,logo_url,social_x,social_github,description,verified")
+        .select("homepage_url,logo_url,social_x,social_github,linkedin_url,telegram_url,discord_url,description,verified")
         .ilike("firm_name", decoded)
         .maybeSingle();
-      return data as { homepage_url: string | null; logo_url: string | null; social_x: string | null; social_github: string | null; description: string | null; verified: boolean | null } | null;
+      return data as { homepage_url: string | null; logo_url: string | null; social_x: string | null; social_github: string | null; linkedin_url: string | null; telegram_url: string | null; discord_url: string | null; description: string | null; verified: boolean | null } | null;
     },
   });
 
@@ -231,46 +232,7 @@ export default function AuditorDetail() {
             <p className="text-sm text-muted-foreground mt-0.5">
               {totalAudits.toLocaleString()} audits across {uniqueClients} clients
             </p>
-            {(firmMeta.data?.homepage_url || firmMeta.data?.social_x || firmMeta.data?.social_github) && (
-              <div className="flex items-center gap-3 mt-3 text-[12px]">
-                {firmMeta.data?.homepage_url && (
-                  <a
-                    href={firmMeta.data.homepage_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline inline-flex items-center gap-1.5"
-                  >
-                    <Globe className="w-3.5 h-3.5" />
-                    {firmMeta.data.homepage_url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "")}
-                    <ExternalLink className="w-3 h-3 opacity-60" />
-                  </a>
-                )}
-                {firmMeta.data?.social_x && (
-                  <a
-                    href={`https://x.com/${firmMeta.data.social_x.replace(/^@/, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-white inline-flex items-center gap-1"
-                    title={`@${firmMeta.data.social_x.replace(/^@/, "")} on X`}
-                  >
-                    <span className="font-bold">𝕏</span>
-                    <span>@{firmMeta.data.social_x.replace(/^@/, "")}</span>
-                  </a>
-                )}
-                {firmMeta.data?.social_github && (
-                  <a
-                    href={`https://github.com/${firmMeta.data.social_github}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-white inline-flex items-center gap-1"
-                    title={`${firmMeta.data.social_github} on GitHub`}
-                  >
-                    <Github className="w-3.5 h-3.5" />
-                    <span>{firmMeta.data.social_github}</span>
-                  </a>
-                )}
-              </div>
-            )}
+            {firmMeta.data && <SocialLinks data={firmMeta.data} className="mt-3" />}
             {firmMeta.data?.description && (
               <p className="text-[13px] text-muted-foreground/90 leading-relaxed mt-3 max-w-3xl">
                 {firmMeta.data.description}
