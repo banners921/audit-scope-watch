@@ -621,7 +621,7 @@ Deno.serve(async (req) => {
   const skipped_other = skipped - skipped_non_sc - skipped_no_name;
   const matches = await matchClients(supabase, sc.map((e) => e.client_name));
 
-  let inserted = 0, dupes = 0, pending = 0, pendingDupes = 0, errors = 0, alreadyIngested = 0;
+  let inserted = 0, dupes = 0, pending = 0, pendingDupes = 0, errors = 0, alreadyIngested = 0, insertedUnlinked = 0;
   const errorSamples: string[] = [];
   const INSERT_CONC = 10;
   for (let i = 0; i < sc.length; i += INSERT_CONC) {
@@ -644,6 +644,20 @@ Deno.serve(async (req) => {
         if (!pe) pending++;
         else if (pe.code === "23505") pendingDupes++;
         else { errors++; if (errorSamples.length < 3) errorSamples.push(`pending(${a.client_name}): ${pe.code} ${pe.message}`); }
+
+        // Keep the audit even though the client is unknown. Dropping it loses
+        // the firm, date and report URL -- real coverage -- to protect a single
+        // missing link. The company stays blank rather than guessed, and these
+        // rows stay queryable via company_slug is null for later enrichment.
+        const { error: ue } = await supabase.from("audit_history").insert({
+          protocol_slug: null, company_slug: null, protocol_name: a.client_name,
+          audit_firm: source.firm_name, audit_date: a.audit_date, audit_type: a.audit_type,
+          report_url: a.url || null, smart_contract_language: a.language,
+          data_source: "scrape:" + firmSlug, match_via: "unlinked",
+        });
+        if (!ue) insertedUnlinked++;
+        else if (ue.code === "23505") dupes++;
+        else { errors++; if (errorSamples.length < 3) errorSamples.push(`unlinked(${a.client_name}): ${ue.code} ${ue.message}`); }
         return;
       }
       const { error: ie } = await supabase.from("audit_history").insert({
@@ -662,9 +676,9 @@ Deno.serve(async (req) => {
 
   await supabase.from("audit_sources").update({
     last_scraped_at: new Date().toISOString(),
-    last_scrape_stats: { catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, dupes, pending, pendingDupes, alreadyIngested, errors, fetch_notes: fetchNotes },
+    last_scrape_stats: { catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, insertedUnlinked, dupes, pending, pendingDupes, alreadyIngested, errors, fetch_notes: fetchNotes },
     updated_at: new Date().toISOString(),
   }).eq("slug", firmSlug);
 
-  return json(200, { ok: true, firm_slug: firmSlug, catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, dupes, pending, pendingDupes, alreadyIngested, errors, fetch_notes: fetchNotes, error_samples: errorSamples });
+  return json(200, { ok: true, firm_slug: firmSlug, catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, insertedUnlinked, dupes, pending, pendingDupes, alreadyIngested, errors, fetch_notes: fetchNotes, error_samples: errorSamples });
 });
