@@ -52,7 +52,7 @@ async function ghJson<T>(path: string, attempt = 0): Promise<T | null> {
   return null;
 }
 
-type CatalogEntry = { title: string; url: string };
+type CatalogEntry = { title: string; url: string; date?: string | null };
 
 async function fetchGithubDir(cfg: { owner: string; repo: string; path: string }): Promise<CatalogEntry[]> {
   const list = await ghJson<Array<{ name: string; path: string; type: string; download_url: string; html_url: string }>>(
@@ -213,13 +213,25 @@ let fetchNotes: string[] = [];
 // Below this many filtered links we assume the listing is JS-rendered.
 const PLAIN_MIN_ENTRIES = 3;
 
+// Feeds date every entry: RSS uses RFC-822, Atom ISO-8601. That date comes
+// from the publisher, so it beats anything inferred from a filename.
+function normalizeFeedDate(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const t = Date.parse(raw.trim());
+  if (Number.isNaN(t)) return null;
+  const d = new Date(t);
+  const y = d.getUTCFullYear();
+  if (y < 2010 || y > 2100) return null;
+  return d.toISOString().slice(0, 10);
+}
+
 function absolutize(href: string, base: string): string {
   try { return new URL(href, base).toString(); } catch { return href; }
 }
 
 // Anchors from raw HTML, plus <loc> entries so XML sitemaps work at rung 1.
-function linkPairsFromRaw(body: string, base: string): Array<{ label: string; href: string }> {
-  const out: Array<{ label: string; href: string }> = [];
+function linkPairsFromRaw(body: string, base: string): Array<{ label: string; href: string; date?: string | null }> {
+  const out: Array<{ label: string; href: string; date?: string | null }> = [];
   const aRe = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m: RegExpExecArray | null;
   while ((m = aRe.exec(body)) !== null) {
@@ -249,7 +261,8 @@ function linkPairsFromRaw(body: string, base: string): Array<{ label: string; hr
       ? tm[1].replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
              .replace(/&gt;/g, ">").replace(/\s+/g, " ").trim()
       : "";
-    out.push({ label, href: absolutize(lm[1].trim(), base) });
+    const dm = block.match(/<(pubDate|published|updated|dc:date)\b[^>]*>([\s\S]*?)<\/\1>/i);
+    out.push({ label, href: absolutize(lm[1].trim(), base), date: normalizeFeedDate(dm ? dm[2] : null) });
   }
   return out;
 }
@@ -258,13 +271,13 @@ const NAV_LABEL = /^(home|next|prev|previous|read more|view all|view audit|view 
 
 // Shared filter/label/dedupe rules for both rungs.
 function pairsToEntries(
-  pairs: Array<{ label: string; href: string }>,
+  pairs: Array<{ label: string; href: string; date?: string | null }>,
   filter: RegExp | null,
   useLinks: boolean,
 ): CatalogEntry[] {
   const out: CatalogEntry[] = [];
   const seen = new Set<string>();
-  for (const { label, href } of pairs) {
+  for (const { label, href, date } of pairs) {
     if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("javascript:")) continue;
     if (filter && !filter.test(href)) continue;
     if (seen.has(href)) continue;
@@ -278,7 +291,7 @@ function pairsToEntries(
     }
     if (!title || title.length < 2 || title.length > 200) continue;
     seen.add(href);
-    out.push({ title, url: href });
+    out.push({ title, url: href, date: date ?? null });
   }
   return out;
 }
@@ -567,7 +580,7 @@ Deno.serve(async (req) => {
   const batchPromises: Array<Promise<Array<Extracted & { url: string }>>> = [];
   for (let i = 0; i < catalog.length; i += batchSize) {
     const chunk = catalog.slice(i, i + batchSize);
-    batchPromises.push(extractBatch(source.firm_name, chunk, assumeAudits).then((rows) => rows.map((e) => ({ ...e, url: chunk[e.n]?.url || "" }))).catch((e) => { console.error(`batch ${i} failed:`, e); return [] as Array<Extracted & { url: string }>; }));
+    batchPromises.push(extractBatch(source.firm_name, chunk, assumeAudits).then((rows) => rows.map((e) => ({ ...e, url: chunk[e.n]?.url || "", audit_date: chunk[e.n]?.date || e.audit_date }))).catch((e) => { console.error(`batch ${i} failed:`, e); return [] as Array<Extracted & { url: string }>; }));
   }
   const batchResults = await Promise.all(batchPromises);
   const extracted: Array<Extracted & { url: string }> = batchResults.flat();
