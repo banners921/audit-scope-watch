@@ -232,6 +232,25 @@ function linkPairsFromRaw(body: string, base: string): Array<{ label: string; hr
     const href = m[1].trim();
     if (href) out.push({ label: "", href: absolutize(href, base) });
   }
+
+  // RSS <item> / Atom <entry>. Many firms publish an audit feed, which is a
+  // cleaner catalogue than their JS-rendered index page: one entry per audit,
+  // with a real title and a stable permalink.
+  const itemRe = /<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  while ((m = itemRe.exec(body)) !== null) {
+    const block = m[2];
+    const tm = block.match(/<title\b[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+    // RSS puts the URL in the element text; Atom puts it in a href attribute.
+    const lm = block.match(/<link\b[^>]*>(?:<!\[CDATA\[)?\s*(https?:\/\/[^<\s]+)\s*(?:\]\]>)?<\/link>/i)
+            || block.match(/<link\b[^>]*\shref=["'](https?:\/\/[^"']+)["']/i)
+            || block.match(/<guid\b[^>]*>(?:<!\[CDATA\[)?\s*(https?:\/\/[^<\s]+)\s*(?:\]\]>)?<\/guid>/i);
+    if (!lm) continue;
+    const label = tm
+      ? tm[1].replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
+             .replace(/&gt;/g, ">").replace(/\s+/g, " ").trim()
+      : "";
+    out.push({ label, href: absolutize(lm[1].trim(), base) });
+  }
   return out;
 }
 
