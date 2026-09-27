@@ -215,14 +215,29 @@ const PLAIN_MIN_ENTRIES = 3;
 
 // Feeds date every entry: RSS uses RFC-822, Atom ISO-8601. That date comes
 // from the publisher, so it beats anything inferred from a filename.
+// A smart-contract audit cannot predate 2015 (Ethereum mainnet) and cannot be
+// dated in the future. Year regexes happily match digit runs inside contract
+// addresses and Mongo ObjectIds -- that is how a 2090-01-01 and a 2060-05-01
+// reached audit_history -- so every date is funnelled through this bound
+// before it is stored. Out of bounds becomes null: unknown, never guessed.
+const MIN_AUDIT_DATE = "2015-01-01";
+function plausibleDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const s = iso.trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const t = Date.parse(`${s}T00:00:00Z`);
+  if (Number.isNaN(t)) return null;
+  if (new Date(t).toISOString().slice(0, 10) !== s) return null; // rejects 2024-02-31
+  if (s < MIN_AUDIT_DATE) return null;
+  if (s > new Date().toISOString().slice(0, 10)) return null;
+  return s;
+}
+
 function normalizeFeedDate(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const t = Date.parse(raw.trim());
   if (Number.isNaN(t)) return null;
-  const d = new Date(t);
-  const y = d.getUTCFullYear();
-  if (y < 2010 || y > 2100) return null;
-  return d.toISOString().slice(0, 10);
+  return plausibleDate(new Date(t).toISOString().slice(0, 10));
 }
 
 function absolutize(href: string, base: string): string {
@@ -432,8 +447,8 @@ function heuristicExtract(firmName: string, entries: CatalogEntry[], assumeAudit
     for (const [l, re] of LANG_RULES) { if (re.test(hay)) { language = l; break; } }
     let audit_date: string | null = null;
     const dm = base.match(/(20\d{2})[-_. ]?(0[1-9]|1[0-2])[-_. ]?(0[1-9]|[12]\d|3[01])?/);
-    if (dm) audit_date = `${dm[1]}-${dm[2]}-${dm[3] || "01"}`;
-    else { const ym = base.match(/\b(20\d{2})\b/); if (ym) audit_date = `${ym[1]}-01-01`; }
+    if (dm) audit_date = plausibleDate(`${dm[1]}-${dm[2]}-${dm[3] || "01"}`);
+    else { const ym = base.match(/\b(20\d{2})\b/); if (ym) audit_date = plausibleDate(`${ym[1]}-01-01`); }
     let name = base.replace(/[_\-]+/g, " ").replace(BOILER, " ");
     for (const t of firmTokens) name = name.replace(new RegExp(`\\b${t}\\b`, "gi"), " ");
     name = name.replace(/\b20\d{2}[-\d]*\b/g, " ").replace(/\bfinance\b/gi, " ").replace(/\s+/g, " ").trim();
@@ -448,7 +463,7 @@ function heuristicExtract(firmName: string, entries: CatalogEntry[], assumeAudit
       // These slugs usually end in the report date (foo-bar-2026-06-24). Take
       // the date for audit_date, then strip it so it cannot leak into the name.
       const sd = seg.match(/(20\d{2})-(0[1-9]|1[0-2])(?:-(0[1-9]|[12]\d|3[01]))?$/);
-      if (sd && !audit_date) audit_date = `${sd[1]}-${sd[2]}-${sd[3] || "01"}`;
+      if (sd && !audit_date) audit_date = plausibleDate(`${sd[1]}-${sd[2]}-${sd[3] || "01"}`);
       seg = seg.replace(/-?(20\d{2})(-\d{2})?(-\d{2})?$/, "");
       seg = seg.replace(/[_\-]+/g, " ").replace(BOILER, " ");
       for (const t of firmTokens) seg = seg.replace(new RegExp(`\\b${t}\\b`, "gi"), " ");
@@ -497,7 +512,7 @@ async function extractBatchLLM(firmName: string, entries: CatalogEntry[]): Promi
     n: a.n as number,
     is_smart_contract: a.is_smart_contract === true,
     client_name: (a.client_name as string).trim(),
-    audit_date: typeof a.audit_date === "string" ? a.audit_date : null,
+    audit_date: typeof a.audit_date === "string" ? plausibleDate(a.audit_date) : null,
     audit_type: typeof a.audit_type === "string" ? a.audit_type : null,
     language: typeof a.language === "string" ? a.language : null,
   }));

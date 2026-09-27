@@ -44,6 +44,22 @@ function isValidProtocolName(name: string): boolean {
 type FileEntry = { title: string; url: string };
 type Audit = { idx: number; name: string; date: string | null; lang: string | null; url?: string };
 
+// A smart-contract audit cannot predate 2015 (Ethereum mainnet) nor be dated in
+// the future. Year regexes match digit runs inside contract addresses and Mongo
+// ObjectIds, which is how 2090-01-01 / 2060-05-01 reached audit_history.
+const MIN_AUDIT_DATE = "2015-01-01";
+function plausibleDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = iso.trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const t = Date.parse(`${d}T00:00:00Z`);
+  if (Number.isNaN(t)) return null;
+  if (new Date(t).toISOString().slice(0, 10) !== d) return null;
+  if (d < MIN_AUDIT_DATE) return null;
+  if (d > new Date().toISOString().slice(0, 10)) return null;
+  return d;
+}
+
 function parseFilename(rawTitle: string, firmName: string): { name: string; date: string | null; lang: string | null } | null {
   const fname = rawTitle.split('/').pop() || rawTitle;
   let s = fname.replace(/\.(pdf|md|json|txt|html?)$/i, '');
@@ -99,7 +115,7 @@ function parseFilename(rawTitle: string, firmName: string): { name: string; date
   const cleaned = titleCase(s);
   if (!cleaned || cleaned.length < 2) return null;
   if (!isValidProtocolName(cleaned)) return null;
-  return { name: cleaned, date, lang };
+  return { name: cleaned, date: plausibleDate(date), lang };
 }
 
 // Fallback: derive protocol name from the folder path when the filename is generic (review.pdf/report.pdf).
