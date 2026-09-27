@@ -402,6 +402,8 @@ const LANG_RULES: Array<[string, RegExp]> = [
   ["rust", /solana|\brust\b|anchor program|solana program/i],
   ["move", /\bmove\b|aptos|\bsui\b/i],
   ["cairo", /cairo|starknet/i],
+  ["noir", /\bnoir\b|aztec/i],
+  ["circom", /circom|circuit|plonk|halo2|groth16|snark|zero.?knowledge|\bzk\b|zk(evm|vm|app|rollup)/i],
   ["cosmwasm", /cosmwasm|cosmos|\bterra\b|\bwasm\b/i],
   ["vyper", /vyper/i],
   ["func", /\bfunc\b|\bton\b/i],
@@ -418,7 +420,11 @@ function heuristicExtract(firmName: string, entries: CatalogEntry[], assumeAudit
     const hay = raw.toLowerCase();
     const is_sc = !NON_SC.test(raw) &&
       (assumeAudits ||
-        /(smart[\s_]?contract|\baudit\b|assessment|\breview\b|\bprogram\b|\bprotocol\b|\bdefi\b|security)/i.test(raw));
+        // ZK / circuit work is in scope: a circuit, proving system or verifier
+        // audit is smart-contract security work, but its titles rarely contain
+        // the words "audit", "review" or "security" (e.g. "circom-lib-circuits",
+        // "plonk-verifier", "semaphore-v4-circuits"), so the gate missed them.
+        /(smart[\s_]?contract|\baudit\b|assessment|\breview\b|\bprogram\b|\bprotocol\b|\bdefi\b|security|zero.?knowledge|\bzk\b|zk(evm|vm|app|rollup|sync)|circom|circuit|plonk|halo2|groth16|snark|\bstark|\bnoir\b|verifier)/i.test(raw));
     let language: string | null = null;
     for (const [l, re] of LANG_RULES) { if (re.test(hay)) { language = l; break; } }
     let audit_date: string | null = null;
