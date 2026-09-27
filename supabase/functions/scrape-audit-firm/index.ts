@@ -623,7 +623,7 @@ Deno.serve(async (req) => {
   const skipped_other = skipped - skipped_non_sc - skipped_no_name;
   const matches = await matchClients(supabase, sc.map((e) => e.client_name));
 
-  let inserted = 0, dupes = 0, pending = 0, pendingDupes = 0, errors = 0;
+  let inserted = 0, dupes = 0, pending = 0, pendingDupes = 0, errors = 0, alreadyIngested = 0;
   const errorSamples: string[] = [];
   const INSERT_CONC = 10;
   for (let i = 0; i < sc.length; i += INSERT_CONC) {
@@ -631,6 +631,14 @@ Deno.serve(async (req) => {
     await Promise.all(chunk.map(async (a) => {
       const m = matches.get(a.client_name);
       if (!m || (!m.company_slug && !m.protocol_slug)) {
+        // The audit may already be recorded under a company we matched on an
+        // earlier run. Queuing another pending row for it adds a row nobody
+        // will ever action: ~1,143 of these accumulated before this guard.
+        if (a.url) {
+          const { data: seen } = await supabase.from("audit_history")
+            .select("id").eq("report_url", a.url).limit(1);
+          if (seen && seen.length > 0) { alreadyIngested++; return; }
+        }
         const { error: pe } = await supabase.from("companies_pending").insert({
           raw_name: a.client_name, suggested_slug: slugify(a.client_name), source: "audit_scrape", via_firm: source.firm_name,
           first_audit_date: a.audit_date, raw_metadata: { report_url: a.url, audit_type: a.audit_type, language: a.language },
@@ -653,9 +661,9 @@ Deno.serve(async (req) => {
 
   await supabase.from("audit_sources").update({
     last_scraped_at: new Date().toISOString(),
-    last_scrape_stats: { catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, dupes, pending, pendingDupes, errors, fetch_notes: fetchNotes },
+    last_scrape_stats: { catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, dupes, pending, pendingDupes, alreadyIngested, errors, fetch_notes: fetchNotes },
     updated_at: new Date().toISOString(),
   }).eq("slug", firmSlug);
 
-  return json(200, { ok: true, firm_slug: firmSlug, catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, dupes, pending, pendingDupes, errors, fetch_notes: fetchNotes, error_samples: errorSamples });
+  return json(200, { ok: true, firm_slug: firmSlug, catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, dupes, pending, pendingDupes, alreadyIngested, errors, fetch_notes: fetchNotes, error_samples: errorSamples });
 });
