@@ -388,7 +388,8 @@ function parseJsonLoose(text: string): Record<string, unknown> | null {
   return null;
 }
 
-type Extracted = { n: number; client_name: string; audit_date: string | null; audit_type: string | null; language: string | null; is_smart_contract: boolean };
+type SkipReason = "non_sc" | "no_name";
+type Extracted = { n: number; client_name: string; audit_date: string | null; audit_type: string | null; language: string | null; is_smart_contract: boolean; skip_reason?: SkipReason };
 
 // ── Heuristic extractor (no LLM) ───────────────────────────────────────────
 // GitHub firm repos use structured filenames like
@@ -435,8 +436,32 @@ function heuristicExtract(firmName: string, entries: CatalogEntry[], assumeAudit
     for (const t of firmTokens) name = name.replace(new RegExp(`\\b${t}\\b`, "gi"), " ");
     name = name.replace(/\b20\d{2}[-\d]*\b/g, " ").replace(/\bfinance\b/gi, " ").replace(/\s+/g, " ").trim();
     name = titleCase(name);
+    // Index pages often label every link with the same boilerplate ("Report",
+    // "PDF"), which BOILER strips to nothing. The URL still carries the client
+    // name (e.g. /audits-archive/company/ankr/), so fall back to it rather than
+    // discarding a real audit.
+    if (name.length < 2 && e.url) {
+      let seg = decodeURIComponent(e.url).replace(/[?#].*$/, "").replace(/\/+$/, "");
+      seg = (seg.split("/").pop() || "").replace(/\.(pdf|md|html?)$/i, "");
+      // These slugs usually end in the report date (foo-bar-2026-06-24). Take
+      // the date for audit_date, then strip it so it cannot leak into the name.
+      const sd = seg.match(/(20\d{2})-(0[1-9]|1[0-2])(?:-(0[1-9]|[12]\d|3[01]))?$/);
+      if (sd && !audit_date) audit_date = `${sd[1]}-${sd[2]}-${sd[3] || "01"}`;
+      seg = seg.replace(/-?(20\d{2})(-\d{2})?(-\d{2})?$/, "");
+      seg = seg.replace(/[_\-]+/g, " ").replace(BOILER, " ");
+      for (const t of firmTokens) seg = seg.replace(new RegExp(`\\b${t}\\b`, "gi"), " ");
+      seg = seg.replace(/\s+/g, " ").trim();
+      if (seg.length >= 2) name = titleCase(seg);
+    }
     const audit_type = /final/i.test(base) ? "final" : /(initial|draft)/i.test(base) ? "initial" : /fix/i.test(base) ? "fix_review" : null;
-    return { n: i, client_name: name, audit_date, audit_type, language, is_smart_contract: is_sc && name.length >= 2 && name.length <= 60 };
+    // Distinguish the two ways an entry can be dropped. Reporting both as
+    // "skipped_non_sc" hid a name-derivation bug behind a classification label.
+    const nameOk = name.length >= 2 && name.length <= 60;
+    return {
+      n: i, client_name: name, audit_date, audit_type, language,
+      is_smart_contract: is_sc && nameOk,
+      skip_reason: !is_sc ? "non_sc" : (!nameOk ? "no_name" : undefined),
+    };
   }).filter((x) => x.client_name);
 }
 
@@ -592,7 +617,10 @@ Deno.serve(async (req) => {
   const extracted: Array<Extracted & { url: string }> = batchResults.flat();
 
   const sc = extracted.filter((e) => e.is_smart_contract);
-  const skipped_non_sc = extracted.length - sc.length;
+  const skipped = extracted.length - sc.length;
+  const skipped_non_sc = extracted.filter((e) => e.skip_reason === "non_sc").length;
+  const skipped_no_name = extracted.filter((e) => e.skip_reason === "no_name").length;
+  const skipped_other = skipped - skipped_non_sc - skipped_no_name;
   const matches = await matchClients(supabase, sc.map((e) => e.client_name));
 
   let inserted = 0, dupes = 0, pending = 0, pendingDupes = 0, errors = 0;
@@ -625,9 +653,9 @@ Deno.serve(async (req) => {
 
   await supabase.from("audit_sources").update({
     last_scraped_at: new Date().toISOString(),
-    last_scrape_stats: { catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped_non_sc, inserted, dupes, pending, pendingDupes, errors, fetch_notes: fetchNotes },
+    last_scrape_stats: { catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, dupes, pending, pendingDupes, errors, fetch_notes: fetchNotes },
     updated_at: new Date().toISOString(),
   }).eq("slug", firmSlug);
 
-  return json(200, { ok: true, firm_slug: firmSlug, catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped_non_sc, inserted, dupes, pending, pendingDupes, errors, fetch_notes: fetchNotes, error_samples: errorSamples });
+  return json(200, { ok: true, firm_slug: firmSlug, catalog_size: catalog.length, total_catalog: totalCatalog, offset, extracted: extracted.length, smart_contract: sc.length, skipped, skipped_non_sc, skipped_no_name, skipped_other, inserted, dupes, pending, pendingDupes, errors, fetch_notes: fetchNotes, error_samples: errorSamples });
 });
