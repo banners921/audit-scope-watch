@@ -69,7 +69,23 @@ function parseFilename(rawTitle: string, firmName: string): { name: string; date
     s = s.replace(new RegExp(`(^|[-_\\s])${tok}([-_\\s]|$)`, 'gi'), ' ');
   }
 
-  s = s.replace(/(^|[-_\s])(audit|review|report|pentest|attestation|final|public|draft|smart[- _]contracts?)([-_\s]|$)/gi, ' ');
+  // Strip boilerplate repeatedly: the trailing delimiter is a lookahead so it stays
+  // available to the next match, otherwise adjacent words ("Security Audit Report")
+  // leave a survivor behind — that survivor used to become the protocol name, and a
+  // company slug was minted from it ("abcwallet-security-report").
+  {
+    // "public" is only boilerplate next to another boilerplate word ("Public Audit
+    // Report"). On its own it is part of the client's name, so strip it first while
+    // its neighbours are still present — "Public Goods Network" must survive.
+    const NEIGHBOUR = 'audit|audits|review|reviews|report|reports|pentest|attestation|assessment|assesment|analysis|summary|security|smart[-_ ]?contracts?';
+    const publicBefore = new RegExp(`(^|[-_\\s])public(?=[-_\\s]+(?:${NEIGHBOUR})(?:[-_\\s]|$))`, 'gi');
+    const publicAfter = new RegExp(`(^|[-_\\s])(?<=(?:${NEIGHBOUR})[-_\\s])public(?=[-_\\s]|$)`, 'gi');
+    let prev: string;
+    do { prev = s; s = s.replace(publicBefore, '$1').replace(publicAfter, '$1'); } while (s !== prev);
+
+    const boiler = /(^|[-_\s])(audit|review|report|pentest|attestation|final|draft|security|assessment|assesment|analysis|summary|smart[- _]contracts?)(?=[-_\s]|$)/gi;
+    do { prev = s; s = s.replace(boiler, '$1'); } while (s !== prev);
+  }
   s = s.replace(/[-_\s]v?\d+(\.\d+)*\.?(\d+)?(?=[-_\s]|$)/gi, ' ');
   s = s.replace(/[-_\s](final|draft|v[\d.]+)([-_\s]|$)/gi, ' ');
   s = s.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
