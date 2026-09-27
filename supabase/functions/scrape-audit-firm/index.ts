@@ -527,12 +527,10 @@ async function matchClients(supabase: ReturnType<typeof createClient>, names: st
       const { data: p } = await supabase.from("protocols").select("slug,name,parent_slug").ilike("name", n).limit(1);
       const pRow = (p as Array<{ slug: string; name: string; parent_slug: string | null }> | null)?.[0];
       if (pRow) { result.set(n, { company_slug: pRow.parent_slug, protocol_slug: pRow.slug, protocol_name: pRow.name, via: "name" }); return; }
-      const { data: fuzzy } = await supabase.rpc("fuzzy_match_company", { client_name: n, min_sim: 0.55 });
-      const row = Array.isArray(fuzzy) ? (fuzzy as Array<{ out_match_type: string; out_slug: string; out_name: string; out_parent_slug: string | null; out_similarity: number }>)[0] : null;
-      if (row) {
-        if (row.out_match_type === "company") result.set(n, { company_slug: row.out_slug, protocol_slug: null, protocol_name: row.out_name, via: `fuzzy(${row.out_similarity.toFixed(2)})` });
-        else result.set(n, { company_slug: row.out_parent_slug, protocol_slug: row.out_slug, protocol_name: row.out_name, via: `fuzzy(${row.out_similarity.toFixed(2)})` });
-      }
+      // No fuzzy fallback. A trigram threshold that accepts "Gluwa Soulbound"
+      // as the company "Soulbound" (similarity 0.80) or "Emblem Vault" as
+      // "Vault" invents linkage rather than finding it. Unmatched clients fall
+      // through to companies_pending, where a human can resolve them.
     }));
   }
   return result;
@@ -652,6 +650,9 @@ Deno.serve(async (req) => {
         protocol_slug: m.protocol_slug, company_slug: m.company_slug, protocol_name: m.protocol_name || a.client_name,
         audit_firm: source.firm_name, audit_date: a.audit_date, audit_type: a.audit_type, report_url: a.url || null,
         smart_contract_language: a.language, data_source: "scrape:" + firmSlug,
+        // Record HOW the client was linked, so a bad matching rule can be
+        // traced and reversed later instead of being invisible.
+        match_via: m.via,
       });
       if (!ie) inserted++;
       else if (ie.code === "23505") dupes++;
