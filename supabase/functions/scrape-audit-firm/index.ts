@@ -239,7 +239,9 @@ function linkPairsFromRaw(body: string, base: string): Array<{ label: string; hr
     const label = m[2].replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     if (href) out.push({ label, href: absolutize(href, base) });
   }
-  const locRe = /<loc>\s*([^<\s]+)\s*<\/loc>/gi;
+  // Some sitemaps are pretty-printed with the bracket on its own line
+  // (`<loc\n  >https://...</loc\n>`), so a literal "<loc>" never appears.
+  const locRe = /<loc\s*>\s*([^<\s]+)\s*<\/loc\s*>/gi;
   while ((m = locRe.exec(body)) !== null) {
     const href = m[1].trim();
     if (href) out.push({ label: "", href: absolutize(href, base) });
