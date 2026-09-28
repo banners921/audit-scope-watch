@@ -30,6 +30,19 @@ async function rpc(chain: string, method: string, params: any[]): Promise<any> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
+  if (r.status === 429) {
+    // One paced retry; the public endpoint throttles on burst, not on quota.
+    await new Promise((res) => setTimeout(res, 1500));
+    const r2 = await fetch(`${UNIBLOCK_RPC}?chainId=${chainId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+    if (!r2.ok) throw new Error(`Uniblock ${chain}.${method} HTTP ${r2.status}`);
+    const j2 = await r2.json();
+    if (j2.error) throw new Error(`RPC error: ${JSON.stringify(j2.error).slice(0, 150)}`);
+    return j2.result;
+  }
   if (!r.ok) throw new Error(`Uniblock ${chain}.${method} HTTP ${r.status}`);
   const j = await r.json();
   if (j.error) throw new Error(`RPC error: ${JSON.stringify(j.error).slice(0, 150)}`);
@@ -134,9 +147,14 @@ Deno.serve(async (req) => {
   const body = (await req.json().catch(() => ({}))) as { limit?: number; chain?: string };
   const limit = Math.min(Math.max(body.limit ?? 15, 1), 100);
 
+  // A transient Uniblock 429 used to be permanent: the row got
+  // metadata_checked_at stamped, and the selector only looked for NULL, so it
+  // was never retried. 433 addresses were stranded that way. Rows whose last
+  // error was a rate limit or timeout are therefore eligible again; a
+  // successful re-check clears metadata_error and drops them out of the pool.
   let q = admin.from("chain_addresses")
     .select("id, company_slug, chain, address")
-    .is("metadata_checked_at", null)
+    .or("metadata_checked_at.is.null,metadata_error.ilike.*429*,metadata_error.ilike.*throughput*,metadata_error.ilike.*timeout*")
     .eq("enabled", true)
     .limit(limit);
   if (body.chain) q = q.eq("chain", body.chain);
@@ -172,6 +190,9 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     }).eq("id", row.id);
     processed++;
+    // Space calls out: the throttle is per-burst, and hammering it just
+    // converts rows into retryable errors.
+    await new Promise((res) => setTimeout(res, 120));
   }
 
   return json(200, {

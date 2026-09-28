@@ -206,6 +206,99 @@ function extractFromPdf(raw: string): Found {
   return null;
 }
 
+
+// ---------------------------------------------------------------------------
+// Address discovery (CyberScope / TechRate).
+//
+// These firms audit a DEPLOYED token contract, not a codebase: their reports
+// name a contract address and never a repository (probe: CyberScope 1/12,
+// TechRate 0/10 mention a repo). The audited artefact is therefore an address,
+// and each firm states it in its own structured way.
+//
+// CyberScope: a labelled block
+//      Address
+//      0x6f5C...
+//      Network
+//      BSC
+// TechRate: a block-explorer link, where the DOMAIN carries the chain and the
+//      path carries the address -- bscscan.com/address/0x2e44...
+//      /tx/ links are excluded: those are transaction hashes, not contracts.
+//
+// Nothing is inferred from a project name, and nothing is written as verified:
+// rows land in chain_addresses unchecked, and collect-contract-metadata proves
+// each one on-chain with eth_getCode.
+const EXPLORER_CHAIN: Record<string, string> = {
+  "etherscan.io": "ethereum", "bscscan.com": "bsc", "polygonscan.com": "polygon",
+  "arbiscan.io": "arbitrum", "snowtrace.io": "avalanche", "ftmscan.com": "fantom",
+  "basescan.org": "base", "optimistic.etherscan.io": "optimism", "cronoscan.com": "cronos",
+};
+// CyberScope's Network field uses short labels.
+const NETWORK_LABEL: Record<string, string> = {
+  ETH: "ethereum", ETHEREUM: "ethereum", BSC: "bsc", BNB: "bsc", BINANCE: "bsc",
+  AVAX: "avalanche", AVALANCHE: "avalanche", POLYGON: "polygon", MATIC: "polygon",
+  ARBITRUM: "arbitrum", ARB: "arbitrum", BASE: "base", OPTIMISM: "optimism", OP: "optimism",
+  FANTOM: "fantom", FTM: "fantom", CRONOS: "cronos",
+};
+
+// Placeholders and precompiles: 0x0..0, 0x1..1, and the low 0x0000..00NN range
+// that every chain reserves. None of these is an audited contract.
+function isPlaceholderAddress(a: string): boolean {
+  const h = a.slice(2).toLowerCase();
+  if (/^0+$/.test(h)) return true;
+  if (/^(.)\1{39}$/.test(h)) return true;          // 0xffff... / 0x1111...
+  if (/^0{30,}[0-9a-f]{0,10}$/.test(h)) return true; // precompile range
+  if (/^10{20,}/.test(h)) return true;              // 0x1000000... placeholders
+  return false;
+}
+
+type AddrHit = { address: string; chain: string; label: string | null };
+
+function extractAddresses(raw: string): AddrHit[] {
+  const flat = raw.replace(/\s+/g, " ");
+  const out: AddrHit[] = [];
+  const seen = new Set<string>();
+  const push = (address: string, chain: string, label: string | null) => {
+    const key = `${chain}:${address.toLowerCase()}`;
+    if (seen.has(key)) return;
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return;   // base58/Solana skipped in v1
+    if (isPlaceholderAddress(address)) return;
+    seen.add(key);
+    out.push({ address: address.toLowerCase(), chain, label });
+  };
+
+  // CyberScope: "Address <addr> ... Network <label>". The network label governs
+  // every address in the document, so it is resolved first.
+  const netM = /\bNetwork\b\s*:?\s*([A-Za-z]+(?:\s+TESTNET)?)/i.exec(flat);
+  const netRaw = netM ? netM[1].trim().toUpperCase() : null;
+  // Testnet deployments are excluded outright: mainnet eth_getCode would report
+  // "not a contract" and record a false negative.
+  const isTestnet = !!netRaw && /TESTNET|TEST\b|GOERLI|SEPOLIA|MUMBAI/i.test(netRaw);
+  const cyberChain = !isTestnet && netRaw ? NETWORK_LABEL[netRaw.split(" ")[0]] ?? null : null;
+  if (cyberChain) {
+    const addrM = /\bAddress\b\s*:?\s*(0x[a-fA-F0-9]{40})/i.exec(flat);
+    if (addrM) push(addrM[1], cyberChain, "audited_contract");
+  }
+
+  // TechRate: explorer links. /address/ and /token/ are contracts; /tx/ is not.
+  //
+  // These URLs wrap mid-address in the PDF text
+  // ("/address/0x2a0f...4651e\n2160de#code"), so they are matched against a
+  // whitespace-REMOVED copy rather than the space-collapsed one used above.
+  // The domain + /address/ prefix must still match immediately before the
+  // hex run, so joining lines cannot conjure an address out of loose text.
+  const squished = raw.replace(/\s+/g, "");
+  const re = /(?:https?:\/\/)?(?:www\.)?([a-z0-9.]*?(?:etherscan\.io|bscscan\.com|polygonscan\.com|arbiscan\.io|snowtrace\.io|ftmscan\.com|basescan\.org|cronoscan\.com))\/(address|token)\/(0x[a-fA-F0-9]{40})/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(squished)) !== null) {
+    const host = m[1].toLowerCase();
+    const chain = EXPLORER_CHAIN[host] ?? EXPLORER_CHAIN[host.replace(/^[a-z0-9]+\./, "")] ?? null;
+    if (!chain) continue;
+    if (isTestnet) continue;
+    push(m[3], chain, m[2] === "token" ? "token_contract" : "audited_contract");
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(405, { error: "Use POST" });
@@ -215,8 +308,70 @@ Deno.serve(async (req) => {
   const cronKey = req.headers.get("x-cron-key") || "";
   if (cronKey !== CRON_KEY) return json(401, { error: "Unauthorized" });
   const admin = createClient(supabaseUrl, serviceKey);
-  const body = (await req.json().catch(() => ({}))) as { limit?: number; retry_invalid?: boolean; backfill_org?: boolean; revalidate_org?: boolean; commit_backfill?: boolean; discover_firm?: string; discover_ext?: "md" | "pdf" };
+  const body = (await req.json().catch(() => ({}))) as { limit?: number; retry_invalid?: boolean; backfill_org?: boolean; revalidate_org?: boolean; commit_backfill?: boolean; discover_firm?: string; discover_ext?: "md" | "pdf"; discover_addresses?: string };
   const limit = Math.min(Math.max(body.limit ?? 25, 1), 100);
+
+  if (body.discover_addresses) {
+    const firm = body.discover_addresses;
+    const { data: targets, error: terr } = await admin.from("audit_history")
+      .select("id, report_url, company_slug")
+      .eq("audit_firm", firm)
+      .not("report_url", "is", null)
+      .not("company_slug", "is", null)   // chain_addresses.company_slug is NOT NULL
+      .ilike("report_url", "*.pdf")
+      .is("address_extraction_status", null)
+      .limit(limit);
+    if (terr) return json(500, { error: terr.message });
+    if (!targets || targets.length === 0) return json(200, { ok: true, scanned: 0, note: "no address candidates" });
+
+    let withAddr = 0, inserted = 0, none = 0, unfetchable = 0;
+    for (const t of targets as any[]) {            // serial: PDF work is memory-bound
+      const raw = await pdfText(rawify(t.report_url));
+      if (raw === null) {
+        unfetchable++;
+        await admin.from("audit_history").update({ address_extraction_status: "report_unfetchable" }).eq("id", t.id);
+        continue;
+      }
+      const hits = extractAddresses(raw);
+      if (hits.length === 0) {
+        none++;
+        await admin.from("audit_history").update({ address_extraction_status: "no_address_in_report" }).eq("id", t.id);
+        continue;
+      }
+      withAddr++;
+      // Written UNVERIFIED on purpose: metadata_checked_at stays null so
+      // collect-contract-metadata proves each one with eth_getCode. Extraction
+      // is evidence that the report named it, not that it exists on chain.
+      const rows = hits.map((h) => ({
+        company_slug: t.company_slug,
+        chain: h.chain,
+        address: h.address,
+        kind: "unknown",
+        label: h.label,
+        source: "audit_report_extraction",
+        enabled: true,
+      }));
+      const r = await fetch(`${supabaseUrl}/rest/v1/chain_addresses?on_conflict=company_slug,chain,address`, {
+        method: "POST",
+        headers: {
+          apikey: serviceKey, Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(rows),
+      });
+      if (r.ok) inserted += rows.length;
+      await admin.from("audit_history").update({
+        address_extraction_status: r.ok ? "addresses_extracted" : "insert_failed",
+      }).eq("id", t.id);
+    }
+    return json(200, {
+      ok: true, mode: "discover_addresses", firm, scanned: targets.length,
+      reports_with_addresses: withAddr, address_rows_written: inserted,
+      no_address_in_report: none, report_unfetchable: unfetchable,
+      note: "rows written unverified; collect-contract-metadata proves them on-chain",
+    });
+  }
 
   if (body.discover_firm) {
     const { data: targets, error: terr } = await admin.from("audit_history")
