@@ -73,15 +73,57 @@ async function fetchText(url: string): Promise<string | null> {
   try { const r = await fetch(url, { headers: { "User-Agent": "AuditScope/1.0" } }); if (!r.ok) return null; const t = await r.text(); return t.length > 500 ? t : null; } catch { return null; }
 }
 
-function inferProtocol(filename: string): { name: string; slug: string; date: string | null } {
-  let base = filename.replace(/\.[a-z]+$/i, "");
-  base = base.replace(/^\d+[-_]\s*/, "");
+// A smart-contract audit cannot predate 2015 nor be dated in the future.
+const MIN_AUDIT_DATE = "2015-01-01";
+function plausibleDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = iso.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const t = Date.parse(`${d}T00:00:00Z`);
+  if (Number.isNaN(t)) return null;
+  if (new Date(t).toISOString().slice(0, 10) !== d) return null;   // rejects 2024-02-31
+  if (d < MIN_AUDIT_DATE) return null;
+  if (d > new Date().toISOString().slice(0, 10)) return null;
+  return d;
+}
+
+// Sherlock names files "2022.02.09 - Final - Tempus Audit Report.pdf": the date
+// separator is a DOT and the boilerplate is space-separated. The old patterns
+// matched only "-"/"_" and stripped a single trailing word, so the whole
+// filename survived as the protocol name AND was minted as a company
+// ("2022-02-09-final-tempus-audit-report"). Some files are YYYY.DD.MM.
+function inferProtocol(filename: string): { name: string; slug: string | null; date: string | null } {
+  let base = filename.replace(/\.[a-z0-9]+$/i, "");
+  base = base.replace(/^\d+[-_]\s*/, "");                  // leading ordinal
+
   let date: string | null = null;
-  const dm = filename.match(/(\d{4})[-_](\d{1,2})/);
-  if (dm) date = `${dm[1]}-${dm[2].padStart(2, "0")}-15`;
-  base = base.replace(/\d{4}[-_]\d{1,2}[-_]?/, "");
-  base = base.replace(/[-_](audit|report|review|final)$/i, "");
-  const name = base.replace(/[-_]/g, " ").trim().replace(/\b\w/g, c => c.toUpperCase()) || filename;
+  const dm = base.match(/(\d{4})[-_.](\d{1,2})(?:[-_.](\d{1,2}))?/);
+  if (dm) {
+    const a = Number(dm[2]);
+    const b = dm[3] ? Number(dm[3]) : 1;
+    // Whichever component is <= 12 is the month; that disambiguates YYYY.DD.MM.
+    const mo = a > 12 && b <= 12 ? b : a;
+    const da = a > 12 && b <= 12 ? a : b;
+    date = plausibleDate(`${dm[1]}-${String(mo).padStart(2, "0")}-${String(da).padStart(2, "0")}`);
+    base = base.replace(dm[0], " ");
+  }
+
+  base = base.replace(/[-_.]+/g, " ");
+  base = base.replace(/(^|\s)(final|preliminary|draft)(?=\s|$)/gi, "$1");
+  // Repeat so adjacent boilerplate ("Collaborative Audit Report") all goes.
+  {
+    const boiler = /(^|\s)(audit|audits|report|reports|review|reviews|assessment|assesment|security|collaborative|contest|fix|update|follow[\s-]?up|smart\s?contracts?)(?=\s|$)/gi;
+    let prev: string;
+    do { prev = base; base = base.replace(boiler, "$1"); } while (base !== prev);
+  }
+  // Trailing epoch stamps only. Short trailing numbers are left alone: they are
+  // audit-round numbers, and stripping them would turn M^0 ("m 0") into "M".
+  base = base.replace(/(\s\d{5,})+$/, "");
+  base = base.replace(/\s+/g, " ").trim();
+
+  const name = base.replace(/\b\w/g, (c) => c.toUpperCase());
+  // No usable client name means no company: blank, never the filename.
+  if (name.length < 2) return { name: "", slug: null, date };
   return { name, slug: slugify(name), date };
 }
 
@@ -119,7 +161,7 @@ Deno.serve(async (req) => {
         if (!comp) await admin.from("companies").insert({ slug: proto.slug, name: proto.name, data_source: "sherlock_report_ingest" });
       }
       await admin.from("audit_history").insert({
-        company_slug: proto.slug, protocol_name: proto.name,
+        company_slug: proto.slug || null, protocol_name: proto.name || null,
         audit_firm: "Sherlock", audit_type: "contest", audit_date: proto.date,
         report_url: f.html_url,
         data_source: "sherlock_report_ingest",
@@ -140,7 +182,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: audit, error: audErr } = await admin.from("audit_history").insert({
-      company_slug: proto.slug, protocol_name: proto.name,
+      company_slug: proto.slug || null, protocol_name: proto.name || null,
       audit_firm: "Sherlock", audit_type: "contest", audit_date: proto.date,
       report_url: f.html_url,
       findings_critical: counts.critical, findings_high: counts.high, findings_medium: counts.medium,
@@ -155,7 +197,7 @@ Deno.serve(async (req) => {
 
     if (findings.length > 0) {
       const detailRows = findings.slice(0, 200).map(fi => ({
-        audit_id: audit.id, company_slug: proto.slug,
+        audit_id: audit.id, company_slug: proto.slug || null,
         severity: fi.severity, title: fi.title, summary: fi.summary || null, status: fi.status,
       }));
       const { error: detErr } = await admin.from("audit_findings_detail").insert(detailRows);
