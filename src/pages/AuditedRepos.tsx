@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Github, Search, ShieldCheck, FileCode, Boxes, ArrowRight, AlertTriangle, Layers, Bug, FileText } from "lucide-react";
+import { AuditCardMark } from "@/components/AuditCardMark";
 import { supabase } from "@/lib/supabase";
 import { BrandLogo } from "@/components/BrandLogo";
 import { AuditTypeBadge } from "@/components/AuditTypeBadge";
@@ -13,6 +14,7 @@ type RepoRow = {
   audit_type: string | null;
   protocol_name: string | null;
   company_slug: string;
+  company_logo_safe: boolean | null;
   report_url: string | null;
   audited_repo_url: string;
   audited_commit_hash: string | null;
@@ -90,7 +92,7 @@ export default function AuditedRepos() {
       for (let from = 0; from < 50000; from += PAGE) {
         const { data, error } = await supabase
           .from("audit_history")
-          .select("id,audit_firm,audit_date,audit_type,protocol_name,company_slug,report_url,audited_repo_url,audited_commit_hash,commit_hash_status,repo_url_status,org_url_status,audited_files,audited_chains,smart_contract_language,findings_critical,findings_high,findings_medium,findings_low,ai_summary")
+          .select("id,audit_firm,audit_date,audit_type,protocol_name,company_slug,company_logo_safe,report_url,audited_repo_url,audited_commit_hash,commit_hash_status,repo_url_status,org_url_status,audited_files,audited_chains,smart_contract_language,findings_critical,findings_high,findings_medium,findings_low,ai_summary")
           .not("audited_repo_url", "is", null)
           .order("audit_date", { ascending: false, nullsFirst: false })
           .range(from, from + PAGE - 1);
@@ -99,6 +101,43 @@ export default function AuditedRepos() {
         if (data.length < PAGE) break;
       }
       return all;
+    },
+  });
+
+  // Company logos for the audit card.
+  //
+  // Only rows the database marks company_logo_safe are eligible: that flag is
+  // false for any link on the fuzzy-suspect list, so a questionable
+  // company_slug shows the shield rather than someone else's brand. Logos come
+  // exclusively from companies.logo via that verified slug — never derived from
+  // protocol_name, the report title, a filename, or a UUID-like name, any of
+  // which would attach a real company's mark to the wrong audit.
+  const safeSlugs = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of reposQ.data ?? []) {
+      if (r.company_logo_safe && r.company_slug) s.add(r.company_slug);
+    }
+    return Array.from(s);
+  }, [reposQ.data]);
+
+  const companyLogosQ = useQuery({
+    queryKey: ["audited-repos-company-logos", safeSlugs.length],
+    enabled: safeSlugs.length > 0,
+    queryFn: async () => {
+      const m = new Map<string, string>();
+      const CHUNK = 500;
+      for (let i = 0; i < safeSlugs.length; i += CHUNK) {
+        const { data, error } = await supabase
+          .from("companies")
+          .select("slug,logo")
+          .in("slug", safeSlugs.slice(i, i + CHUNK))
+          .not("logo", "is", null);
+        if (error) break;
+        for (const c of (data ?? []) as { slug: string; logo: string | null }[]) {
+          if (c.logo) m.set(c.slug, c.logo);
+        }
+      }
+      return m;
     },
   });
 
@@ -234,7 +273,9 @@ export default function AuditedRepos() {
                 <div key={r.id} className="as-card p-3.5 flex flex-col gap-2.5">
                   {/* Header: firm + date */}
                   <div className="flex items-center gap-2 text-[10.5px] text-muted-foreground">
-                    <ShieldCheck className="w-3 h-3 text-primary" />
+                    <AuditCardMark
+                      logo={r.company_logo_safe && r.company_slug ? companyLogosQ.data?.get(r.company_slug) ?? null : null}
+                    />
                     {r.audit_firm ? (
                       <Link to={`/auditors/${encodeURIComponent(r.audit_firm)}`} className="text-white/85 font-medium hover:text-primary">{r.audit_firm}</Link>
                     ) : <span>—</span>}
