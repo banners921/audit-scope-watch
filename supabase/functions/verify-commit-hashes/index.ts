@@ -75,6 +75,54 @@ async function verifyAndRepair(repoUrl: string, hash: string | null, ghToken: st
   return { repo: statusFromCode(direct.status), commit: hash ? statusFromCode(direct.status) : null, org: null };
 }
 
+
+// ---------------------------------------------------------------------------
+// Discovery mode.
+//
+// The modes above only VALIDATE a repo URL that is already on the row; they
+// never find one. Discovery reads the report itself and extracts the repository
+// the report states was audited, then puts that candidate through the exact
+// same verifyAndRepair() check as everything else. A candidate is only written
+// once GitHub answers 200 for it -- a repo is never asserted from a name.
+//
+// Pashov reports carry an unambiguous block:
+//   **Review commit hash:**<br>o [<sha>](https://github.com/OWNER/REPO/tree/<sha>)
+// Anchoring on that marker matters: the body of a report links plenty of other
+// repos (OpenZeppelin, Uniswap) that are references, not the audited code.
+function rawify(u: string): string {
+  return u.replace("https://github.com/", "https://raw.githubusercontent.com/")
+          .replace("/blob/", "/");
+}
+
+type Found = { repo: string; hash: string | null } | null;
+
+function extractFromReport(md: string): Found {
+  // 1. The explicit "Review commit hash" marker, first occurrence only. The
+  //    "Fixes review commit hash" block names the same repo at a later commit.
+  // The marker is written several ways across the corpus:
+  //   **Review commit hash:**  |  _review commit hash_ -  |  **_review commit hash_ -**
+  // so match the words and allow surrounding emphasis. The lookbehind keeps us
+  // off "fixes review commit hash", which names the same repo at a later commit.
+  const marker = /(?<!fixes[\s_*-]{0,4})review commit hash[\s_*:-]{0,6}([\s\S]{0,600})/i.exec(md);
+  if (marker) {
+    const m = /https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/tree\/([a-f0-9]{7,64})/i.exec(marker[1]);
+    if (m) return { repo: `https://github.com/${m[1]}/${m[2]}`, hash: m[3] };
+  }
+  // 2. Code4rena reports name the contest repository in their Scope section:
+  //    "The code under review can be found within the [... contest repository]
+  //    (https://github.com/code-423n4/2022-07-yield)". That repo holds the
+  //    audited source, and it is what the 336 already-verified C4 rows point
+  //    to, so this stays consistent with the existing corpus. The closing paren
+  //    is required so issue/blob links are not mistaken for the repo root.
+  const c4 = /code under review[\s\S]{0,300}?\]\(\s*(https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\s*\)/i.exec(md);
+  if (c4) return { repo: c4[1].replace(/\.git$/, ""), hash: null };
+
+  // 3. Scope prose: "a security review of the <strong>OWNER/REPO</strong> repository".
+  const scope = /review of the\s*(?:<strong>)?\s*([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\s*(?:<\/strong>)?\s*repositor/i.exec(md);
+  if (scope) return { repo: `https://github.com/${scope[1]}/${scope[2]}`, hash: null };
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(405, { error: "Use POST" });
@@ -84,8 +132,67 @@ Deno.serve(async (req) => {
   const cronKey = req.headers.get("x-cron-key") || "";
   if (cronKey !== CRON_KEY) return json(401, { error: "Unauthorized" });
   const admin = createClient(supabaseUrl, serviceKey);
-  const body = (await req.json().catch(() => ({}))) as { limit?: number; retry_invalid?: boolean; backfill_org?: boolean; revalidate_org?: boolean; commit_backfill?: boolean };
+  const body = (await req.json().catch(() => ({}))) as { limit?: number; retry_invalid?: boolean; backfill_org?: boolean; revalidate_org?: boolean; commit_backfill?: boolean; discover_firm?: string };
   const limit = Math.min(Math.max(body.limit ?? 25, 1), 100);
+
+  if (body.discover_firm) {
+    const { data: targets, error: terr } = await admin.from("audit_history")
+      .select("id, report_url")
+      .eq("audit_firm", body.discover_firm)
+      .not("report_url", "is", null)
+      .ilike("report_url", "%.md")
+      .is("repo_url_status", null)
+      .limit(limit);
+    if (terr) return json(500, { error: terr.message });
+    if (!targets || targets.length === 0) return json(200, { ok: true, scanned: 0, note: "no discovery candidates" });
+
+    let found = 0, written = 0, invalid = 0, noEvidence = 0, fetchFail = 0;
+    const PAR = 3;
+    for (let i = 0; i < targets.length; i += PAR) {
+      const chunk = targets.slice(i, i + PAR);
+      await Promise.all(chunk.map(async (t: any) => {
+        let md: string;
+        try {
+          const r = await fetch(rawify(t.report_url), { headers: { "User-Agent": "AuditScope-Verifier/6.0" } });
+          if (!r.ok) { fetchFail++; return; }
+          md = await r.text();
+        } catch { fetchFail++; return; }
+        const hit = extractFromReport(md);
+        if (!hit) {
+          noEvidence++;
+          // Terminal state. audited_repo_url stays NULL -- the report simply does
+          // not name a repository, so there is nothing to verify and nothing to
+          // assert. Recording it stops every later run re-fetching this report.
+          await admin.from("audit_history").update({ repo_url_status: "no_repo_in_report" }).eq("id", t.id);
+          return;
+        }
+        found++;
+        const v = await verifyAndRepair(hit.repo, hit.hash, ghToken);
+        if (v.repo !== "valid") {
+          invalid++;
+          // The report named a repo but GitHub does not serve it to us (private
+          // or deleted). Unverifiable, so the row stays blank rather than
+          // carrying an unchecked URL.
+          await admin.from("audit_history").update({ repo_url_status: "repo_unverifiable" }).eq("id", t.id);
+          return;
+        }
+        const update: any = {
+          audited_repo_url: v.newRepoUrl || hit.repo,
+          repo_url_status: "valid",
+        };
+        if (hit.hash) { update.audited_commit_hash = hit.hash; update.commit_hash_status = v.commit; }
+        if (v.org) update.org_url_status = v.org;
+        await admin.from("audit_history").update(update).eq("id", t.id);
+        written++;
+      }));
+    }
+    return json(200, {
+      ok: true, mode: "discover", firm: body.discover_firm, scanned: targets.length,
+      evidence_found: found, verified_and_written: written,
+      candidate_failed_github_check: invalid, no_repo_stated_in_report: noEvidence,
+      report_fetch_failed: fetchFail, has_token: !!ghToken,
+    });
+  }
 
   let q = admin.from("audit_history")
     .select("id, audited_repo_url, audited_commit_hash, repo_url_status, org_url_status")

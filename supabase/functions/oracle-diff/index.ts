@@ -294,6 +294,35 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: "defillama unavailable" }), { status: 502 });
   }
 
+  // Cache the oracle's own protocol list so SQL-side jobs can apply the
+  // two-source CREATE rule without an HTTP call. This caches the oracle's
+  // SOURCE data only -- audit_history is still never written from here.
+  let llamaCached = 0;
+  for (let i = 0; i < llama.length; i += 500) {
+    const rows = llama.slice(i, i + 500)
+      .filter((p: any) => p && typeof p.name === "string" && p.name.trim())
+      .map((p: any) => ({
+        slug: String(p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        name: String(p.name).trim(),
+        name_norm: String(p.name).toLowerCase().replace(/[^a-z0-9]/g, ""),
+        url: typeof p.url === "string" && p.url ? p.url : null,
+        category: typeof p.category === "string" ? p.category : null,
+        refreshed_at: new Date().toISOString(),
+      }))
+      .filter((r: any) => r.slug && r.name_norm);
+    if (rows.length === 0) continue;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/llama_protocols?on_conflict=slug`, {
+      method: "POST",
+      headers: {
+        apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(rows),
+    });
+    if (r.ok) llamaCached += rows.length;
+  }
+
   const ours = await ourReportUrls();
   const { domains, names } = await knownFirmDomains();
 
@@ -353,6 +382,7 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify({
     ok: true,
     protocols_scanned: llama.length,
+    llama_protocols_cached: llamaCached,
     our_report_urls: ours.size,
     audit_links_missing: missing.length,
     candidate_firms: candidates.length,
