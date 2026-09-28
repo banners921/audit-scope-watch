@@ -324,7 +324,21 @@ Deno.serve(async (req) => {
     if (terr) return json(500, { error: terr.message });
     if (!targets || targets.length === 0) return json(200, { ok: true, scanned: 0, note: "no address candidates" });
 
-    let withAddr = 0, inserted = 0, none = 0, unfetchable = 0;
+    // contract_address_blacklist holds generic infrastructure tokens -- USDC,
+    // USDT, DAI, WETH, WBTC, stETH and friends. A report naming one of those is
+    // naming a dependency, not the audited contract, so attributing it to the
+    // client would put someone else's token on their record. Nothing in the
+    // codebase consulted this table before, which is why 33 such rows had
+    // already accumulated from other sources.
+    const blacklist = new Set<string>();
+    {
+      const { data: bl } = await admin.from("contract_address_blacklist").select("address, chain");
+      for (const b of (bl ?? []) as Array<{ address: string; chain: string }>) {
+        if (b.address && b.chain) blacklist.add(`${b.chain.toLowerCase()}:${b.address.toLowerCase()}`);
+      }
+    }
+
+    let withAddr = 0, inserted = 0, none = 0, unfetchable = 0, blacklisted = 0;
     for (const t of targets as any[]) {            // serial: PDF work is memory-bound
       const raw = await pdfText(rawify(t.report_url));
       if (raw === null) {
@@ -332,7 +346,10 @@ Deno.serve(async (req) => {
         await admin.from("audit_history").update({ address_extraction_status: "report_unfetchable" }).eq("id", t.id);
         continue;
       }
-      const hits = extractAddresses(raw);
+      const allHits = extractAddresses(raw);
+      const before = allHits.length;
+      const hits = allHits.filter((h) => !blacklist.has(`${h.chain.toLowerCase()}:${h.address.toLowerCase()}`));
+      blacklisted += before - hits.length;
       if (hits.length === 0) {
         none++;
         await admin.from("audit_history").update({ address_extraction_status: "no_address_in_report" }).eq("id", t.id);
@@ -369,6 +386,7 @@ Deno.serve(async (req) => {
       ok: true, mode: "discover_addresses", firm, scanned: targets.length,
       reports_with_addresses: withAddr, address_rows_written: inserted,
       no_address_in_report: none, report_unfetchable: unfetchable,
+      blacklisted_addresses_skipped: blacklisted,
       note: "rows written unverified; collect-contract-metadata proves them on-chain",
     });
   }
