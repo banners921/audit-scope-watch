@@ -128,6 +128,19 @@ Deno.serve(async (req: Request) => {
 
   let matchedCoins = 0;
   let candidateRows = 0;
+
+  // contract_address_blacklist: generic infrastructure tokens (USDC, USDT, DAI,
+  // WETH, WBTC, stETH, BUSD, CAKE...). CoinGecko will happily hand us these for
+  // any company that lists them, which is how 10 such rows landed here before.
+  // Loaded once per run and keyed chain:address, same as the address drain.
+  const blacklist = new Set<string>();
+  {
+    const { data: bl } = await sb.from('contract_address_blacklist').select('address, chain');
+    for (const b of (bl ?? []) as Array<{ address: string; chain: string }>) {
+      if (b.address && b.chain) blacklist.add(`${b.chain.toLowerCase()}:${b.address.toLowerCase()}`);
+    }
+  }
+  let blacklistSkipped = 0;
   const rows: any[] = [];
 
   for (const coin of coins) {
@@ -161,6 +174,7 @@ Deno.serve(async (req: Request) => {
       }
       if (EVM_ADDR_RE.test(cleanAddr) && BAD.has(cleanAddr.toLowerCase())) continue;
       const ourChain = PLATFORM_MAP[platform] || platform;
+      if (blacklist.has(`${ourChain.toLowerCase()}:${cleanAddr.toLowerCase()}`)) { blacklistSkipped++; continue; }
       const key = `${ourChain}|${cleanAddr.toLowerCase()}`;
       if (existingKey.has(key)) continue;
       existingKey.add(key);
@@ -179,7 +193,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (dryRun) {
-    return new Response(JSON.stringify({ ok: true, dry: true, total_coins: coins.length, matched_coins: matchedCoins, new_rows: candidateRows, elapsed_ms: Date.now() - startedAt }), { headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ok: true, dry: true, total_coins: coins.length, matched_coins: matchedCoins, new_rows: candidateRows, blacklist_skipped: blacklistSkipped, elapsed_ms: Date.now() - startedAt }), { headers: { 'Content-Type': 'application/json' } });
   }
 
   // Batch insert
@@ -194,6 +208,7 @@ Deno.serve(async (req: Request) => {
 
   return new Response(JSON.stringify({
     ok: true,
+    blacklist_skipped: blacklistSkipped,
     total_coins: coins.length,
     matched_coins: matchedCoins,
     new_rows: candidateRows,
