@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
   const cronKey = req.headers.get("x-cron-key") || "";
   if (cronKey !== CRON_KEY) return json(401, { error: "Unauthorized" });
   const admin = createClient(supabaseUrl, serviceKey);
-  const body = (await req.json().catch(() => ({}))) as { limit?: number; retry_invalid?: boolean; backfill_org?: boolean; revalidate_org?: boolean; commit_backfill?: boolean; discover_firm?: string };
+  const body = (await req.json().catch(() => ({}))) as { limit?: number; retry_invalid?: boolean; backfill_org?: boolean; revalidate_org?: boolean; commit_backfill?: boolean; discover_firm?: string; discover_ext?: "md" | "pdf" };
   const limit = Math.min(Math.max(body.limit ?? 25, 1), 100);
 
   if (body.discover_firm) {
@@ -223,33 +223,77 @@ Deno.serve(async (req) => {
       .select("id, report_url")
       .eq("audit_firm", body.discover_firm)
       .not("report_url", "is", null)
-      .or("report_url.ilike.*.md,report_url.ilike.*.pdf")
+      .or(
+        (body as any).discover_ext === "md" ? "report_url.ilike.*.md"
+        : (body as any).discover_ext === "pdf" ? "report_url.ilike.*.pdf"
+        : "report_url.ilike.*.md,report_url.ilike.*.pdf",
+      )
       .is("repo_url_status", null)
       .limit(limit);
     if (terr) return json(500, { error: terr.message });
     if (!targets || targets.length === 0) return json(200, { ok: true, scanned: 0, note: "no discovery candidates" });
 
     let found = 0, written = 0, invalid = 0, noEvidence = 0, fetchFail = 0;
-    // PDF work is memory-bound, markdown is not.
-    const PAR = /\.pdf($|\?)/i.test(String(targets[0]?.report_url ?? "")) ? 1 : 3;
+    // PDF work is memory-bound, markdown is not. Test EVERY target, not just
+    // the first: a firm with mixed .md/.pdf reports (QuillAudits) otherwise
+    // picks concurrency from a leading markdown row and then runs PDFs three at
+    // a time, which trips WORKER_RESOURCE_LIMIT.
+    const hasPdf = targets.some((t: any) => /\.pdf($|\?)/i.test(String(t.report_url ?? "")));
+    const PAR = hasPdf ? 1 : 3;
     for (let i = 0; i < targets.length; i += PAR) {
       const chunk = targets.slice(i, i + PAR);
       await Promise.all(chunk.map(async (t: any) => {
         const src = rawify(t.report_url);
         const isPdf = /\.pdf($|\?)/i.test(src);
         let hit: Found = null;
+        let unfetchable = false;
         if (isPdf) {
           const raw = await pdfText(src);
-          if (raw === null) { fetchFail++; return; }
-          hit = extractFromPdf(raw);
+          if (raw === null) unfetchable = true;
+          else hit = extractFromPdf(raw);
         } else {
-          let md: string;
+          let md: string | null = null;
           try {
             const r = await fetch(src, { headers: { "User-Agent": "AuditScope-Verifier/6.0" } });
-            if (!r.ok) { fetchFail++; return; }
-            md = await r.text();
-          } catch { fetchFail++; return; }
-          hit = extractFromReport(md);
+            if (r.ok) md = await r.text();
+          } catch { /* handled below */ }
+          if (md === null) unfetchable = true;
+          else hit = extractFromReport(md);
+        }
+
+        if (unfetchable) {
+          // Many older Code4rena report.md files have been removed from their
+          // contest repo, but the repo itself still resolves -- and for C4 the
+          // contest repo IS the audited code, which is what 336 of the 343
+          // already-verified C4 rows point to. The report URL is an authoritative
+          // location, not a name guess, so it can stand in for the report body.
+          //
+          // Excluded: *-findings / *-mitigation-findings repos. Those hold the
+          // findings, not the audited code, and the code repo they review is not
+          // published separately -- calling a findings repo "the audited
+          // repository" would misstate what we verified.
+          // Both hosts appear in the corpus; raw.githubusercontent.com does NOT
+          // contain the substring "github.com", so it must be matched explicitly.
+          const m = /(?:raw\.githubusercontent\.com|github\.com)\/(code-423n4)\/([A-Za-z0-9_.-]+)/i.exec(t.report_url);
+          const repoName = m ? m[2] : null;
+          if (repoName && !/findings/i.test(repoName)) {
+            const cand = `https://github.com/${m![1]}/${repoName}`;
+            const v2 = await verifyAndRepair(cand, null, ghToken);
+            if (v2.repo === "valid") {
+              await admin.from("audit_history").update({
+                audited_repo_url: v2.newRepoUrl || cand,
+                repo_url_status: "valid",
+                ...(v2.org ? { org_url_status: v2.org } : {}),
+              }).eq("id", t.id);
+              found++; written++;
+              return;
+            }
+          }
+          fetchFail++;
+          // Terminal: the report body cannot be read, so there is nothing to
+          // extract on any later run either.
+          await admin.from("audit_history").update({ repo_url_status: "report_unfetchable" }).eq("id", t.id);
+          return;
         }
         if (!hit) {
           noEvidence++;
