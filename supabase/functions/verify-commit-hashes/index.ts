@@ -123,6 +123,89 @@ function extractFromReport(md: string): Found {
   return null;
 }
 
+
+// ---------------------------------------------------------------------------
+// PDF reports.
+//
+// Probe result: unpdf extracts a 33-page / 930KB Sherlock report in ~410ms in
+// this runtime at $0, and Sherlock reports carry a structured scope block:
+//     Scope
+//     Repository: OWNER/REPO        (sometimes a full github URL)
+//     Branch: main
+//     Commit: <40 hex>
+// naming the PROTOCOL's own repo, not the contest repo. 11 of 13 sampled
+// reports matched that block; the other two used older prose variants that the
+// patterns below also cover.
+//
+// CyberScope (1/12) and TechRate (0/10) are deliberately NOT wired up: their
+// reports identify a deployed token by contract address and never name a
+// repository, so there is nothing to extract.
+//
+// PDF text wraps at a fixed width, which splits URLs and 40-char hashes across
+// lines, so everything is matched against whitespace-collapsed text and the
+// hash has its inner spaces stripped after capture.
+// Only the first pages are read. Extracting whole reports (some are 33 pages /
+// 1MB) at concurrency 3 exhausted the edge worker -- WORKER_RESOURCE_LIMIT --
+// and it is wasted work regardless: the scope block is always in the front
+// matter, and reading the findings body would only pull in per-issue links to
+// other repos that are references rather than the audited code.
+const PDF_PAGES = 4;
+async function pdfText(url: string): Promise<string | null> {
+  try {
+    const r = await fetch(url, { headers: { "User-Agent": "AuditScope-Verifier/6.0" } });
+    if (!r.ok) return null;
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    const { getDocumentProxy } = await import("https://esm.sh/unpdf@0.12.1");
+    const doc = await getDocumentProxy(bytes);
+    const pages = Math.min(doc.numPages ?? 1, PDF_PAGES);
+    let out = "";
+    for (let i = 1; i <= pages; i++) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      out += (tc.items as Array<{ str?: string }>).map((it) => it.str ?? "").join(" ") + "\n";
+      if (typeof (page as any).cleanup === "function") (page as any).cleanup();
+    }
+    if (typeof (doc as any).destroy === "function") await (doc as any).destroy();
+    return out;
+  } catch { return null; }
+}
+
+function ownerRepoFrom(v: string): string | null {
+  const s2 = v.trim().replace(/[),.;]+$/, "");
+  const m = /github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/i.exec(s2);
+  if (m) return `${m[1]}/${m[2]}`.replace(/\.git$/, "");
+  const p = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(s2);
+  if (p) return `${p[1]}/${p[2]}`;
+  return null;
+}
+
+function extractFromPdf(raw: string): Found {
+  const flat = raw.replace(/\s+/g, " ");
+  const hashOf = (m: RegExpExecArray | null) =>
+    m ? m[1].replace(/\s+/g, "").slice(0, 40) : null;
+  const commit = hashOf(/Commit:?\s*([a-f0-9](?:[a-f0-9]|\s){38,60})/i.exec(flat));
+
+  // 1. Explicit Repository: field (bare owner/repo or a full URL).
+  const rep = /Repositor(?:y|ies):\s*(\S+)/i.exec(flat);
+  if (rep) {
+    const or = ownerRepoFrom(rep[1]);
+    if (or) return { repo: `https://github.com/${or}`, hash: commit };
+  }
+  // 2. "Branch: Master (https://github.com/OWNER/REPO)"
+  const br = /Branch:[^(]{0,40}\((https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)[^)]*\)/i.exec(flat);
+  if (br) {
+    const or = ownerRepoFrom(br[1]);
+    if (or) return { repo: `https://github.com/${or}`, hash: commit };
+  }
+  // 3. Prose: "contracts in the OWNER/REPO @ <hash> repo are in scope"
+  const prose = /in the ([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\s*@\s*([a-f0-9](?:[a-f0-9]|\s){38,60})/i.exec(flat);
+  if (prose) {
+    const or = ownerRepoFrom(prose[1]);
+    if (or) return { repo: `https://github.com/${or}`, hash: prose[2].replace(/\s+/g, "").slice(0, 40) };
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(405, { error: "Use POST" });
@@ -140,24 +223,34 @@ Deno.serve(async (req) => {
       .select("id, report_url")
       .eq("audit_firm", body.discover_firm)
       .not("report_url", "is", null)
-      .ilike("report_url", "%.md")
+      .or("report_url.ilike.*.md,report_url.ilike.*.pdf")
       .is("repo_url_status", null)
       .limit(limit);
     if (terr) return json(500, { error: terr.message });
     if (!targets || targets.length === 0) return json(200, { ok: true, scanned: 0, note: "no discovery candidates" });
 
     let found = 0, written = 0, invalid = 0, noEvidence = 0, fetchFail = 0;
-    const PAR = 3;
+    // PDF work is memory-bound, markdown is not.
+    const PAR = /\.pdf($|\?)/i.test(String(targets[0]?.report_url ?? "")) ? 1 : 3;
     for (let i = 0; i < targets.length; i += PAR) {
       const chunk = targets.slice(i, i + PAR);
       await Promise.all(chunk.map(async (t: any) => {
-        let md: string;
-        try {
-          const r = await fetch(rawify(t.report_url), { headers: { "User-Agent": "AuditScope-Verifier/6.0" } });
-          if (!r.ok) { fetchFail++; return; }
-          md = await r.text();
-        } catch { fetchFail++; return; }
-        const hit = extractFromReport(md);
+        const src = rawify(t.report_url);
+        const isPdf = /\.pdf($|\?)/i.test(src);
+        let hit: Found = null;
+        if (isPdf) {
+          const raw = await pdfText(src);
+          if (raw === null) { fetchFail++; return; }
+          hit = extractFromPdf(raw);
+        } else {
+          let md: string;
+          try {
+            const r = await fetch(src, { headers: { "User-Agent": "AuditScope-Verifier/6.0" } });
+            if (!r.ok) { fetchFail++; return; }
+            md = await r.text();
+          } catch { fetchFail++; return; }
+          hit = extractFromReport(md);
+        }
         if (!hit) {
           noEvidence++;
           // Terminal state. audited_repo_url stays NULL -- the report simply does
