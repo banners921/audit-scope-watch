@@ -75,6 +75,22 @@ Deno.serve(async (req) => {
 
   // Build candidate rows, dedupe by lower(report_url) within new set too
   const rows: any[] = [];
+  // company_slug here is derived from a GitHub folder name, which is a guess,
+  // not a link. Written unvalidated it produces an audit pointing at a company
+  // that does not exist -- a card with no name and no logo. Resolve the derived
+  // slugs against companies once, then only keep the ones that exist; the rest
+  // go in blank for the enrichment drain. No company is created from a slug.
+  const derivedSlugs = Array.from(new Set(
+    pdfPaths.map((path) => slugToCompanySlug(path.slice(0, -'/audit.pdf'.length))).filter(Boolean),
+  ));
+  const realCompanySlugs = new Set<string>();
+  for (let i = 0; i < derivedSlugs.length; i += 300) {
+    const chunk = derivedSlugs.slice(i, i + 300).map((x) => `"${x}"`).join(',');
+    const co = await restGet(`companies?select=slug&slug=in.(${encodeURIComponent(chunk)})`);
+    for (const r of co as Array<{ slug: string }>) realCompanySlugs.add(r.slug);
+  }
+  let unresolvedCompany = 0;
+
   const seenLowerInBatch = new Set<string>();
   for (const path of pdfPaths) {
     const folder = path.slice(0, -'/audit.pdf'.length);
@@ -86,8 +102,11 @@ Deno.serve(async (req) => {
     if (existingReportUrlLower.has(rurlLower)) continue;
     if (seenLowerInBatch.has(rurlLower)) continue;
     seenLowerInBatch.add(rurlLower);
+    const derived = slugToCompanySlug(folder);
+    const resolved = derived && realCompanySlugs.has(derived) ? derived : null;
+    if (derived && !resolved) unresolvedCompany++;
     rows.push({
-      company_slug: slugToCompanySlug(folder),
+      company_slug: resolved,
       protocol_slug: slugToProtocolSlug(folder),
       protocol_name: slugToProtocolName(folder),
       raw_pdf_url: pdfUrl,
@@ -97,6 +116,7 @@ Deno.serve(async (req) => {
     });
   }
   result.rows_to_insert = rows.length;
+  (result as Record<string, unknown>).unresolved_company_slug = unresolvedCompany;
 
   let inserted = 0;
   const errors: any[] = [];

@@ -533,6 +533,30 @@ async function matchClients(supabase: ReturnType<typeof createClient>, names: st
   for (const r of (pBySlug as Array<{ slug: string; name: string; parent_slug: string | null }> | null) || []) {
     for (const n of uniq) { if (slugify(n) === r.slug && !result.has(n)) result.set(n, { company_slug: r.parent_slug, protocol_slug: r.slug, protocol_name: r.name, via: "protocol_slug" }); }
   }
+  // protocols.parent_slug is not a foreign key into companies, and 621 rows
+  // point at a company that does not exist. Writing one onto an audit created a
+  // company_slug with no companies row -- an invisible broken link that renders
+  // no logo and no name. Validate every parent-derived slug and drop the ones
+  // that do not resolve; protocol_slug is still kept, and a null company_slug
+  // routes the row to the enrichment drain, which links it only under the
+  // exact-match or two-source rule. A company is never created from a slug.
+  {
+    const parentSlugs = Array.from(new Set(
+      Array.from(result.values())
+        .filter((m) => m.via === "protocol_slug" && m.company_slug)
+        .map((m) => m.company_slug as string),
+    ));
+    if (parentSlugs.length > 0) {
+      const { data: realCos } = await supabase.from("companies").select("slug").in("slug", parentSlugs);
+      const exists = new Set(((realCos as Array<{ slug: string }> | null) || []).map((r) => r.slug));
+      for (const [n, m] of result) {
+        if (m.via === "protocol_slug" && m.company_slug && !exists.has(m.company_slug)) {
+          result.set(n, { ...m, company_slug: null, via: "protocol_slug:orphan_parent" });
+        }
+      }
+    }
+  }
+
   const remaining = uniq.filter((n) => !result.has(n));
   const CONC = 3;
   for (let i = 0; i < remaining.length; i += CONC) {
@@ -543,7 +567,19 @@ async function matchClients(supabase: ReturnType<typeof createClient>, names: st
       if (cRow) { result.set(n, { company_slug: cRow.slug, protocol_slug: null, protocol_name: cRow.name, via: "name" }); return; }
       const { data: p } = await supabase.from("protocols").select("slug,name,parent_slug").ilike("name", n).limit(1);
       const pRow = (p as Array<{ slug: string; name: string; parent_slug: string | null }> | null)?.[0];
-      if (pRow) { result.set(n, { company_slug: pRow.parent_slug, protocol_slug: pRow.slug, protocol_name: pRow.name, via: "name" }); return; }
+      if (pRow) {
+        // Same orphan-parent guard as above, on the name-match path.
+        let parent: string | null = pRow.parent_slug;
+        if (parent) {
+          const { data: pc } = await supabase.from("companies").select("slug").eq("slug", parent).limit(1);
+          if (!((pc as Array<{ slug: string }> | null)?.length)) parent = null;
+        }
+        result.set(n, {
+          company_slug: parent, protocol_slug: pRow.slug, protocol_name: pRow.name,
+          via: parent ? "name" : "name:orphan_parent",
+        });
+        return;
+      }
       // No fuzzy fallback. A trigram threshold that accepts "Gluwa Soulbound"
       // as the company "Soulbound" (similarity 0.80) or "Emblem Vault" as
       // "Vault" invents linkage rather than finding it. Unmatched clients fall
@@ -677,13 +713,24 @@ Deno.serve(async (req) => {
         else { errors++; if (errorSamples.length < 3) errorSamples.push(`unlinked(${a.client_name}): ${ue.code} ${ue.message}`); }
         return;
       }
+      // Last line of defence at the write itself. audit_history.company_slug has
+      // no foreign key, so an unresolvable slug inserts silently and shows up
+      // later as a card with no company and no logo. Whatever the match path
+      // decided, the slug only goes in if the company actually exists; a blank
+      // sends the row to the enrichment drain instead, which links it under the
+      // exact-match or two-source rule and never invents a company.
+      let safeCompanySlug = m.company_slug;
+      if (safeCompanySlug) {
+        const { data: coChk } = await supabase.from("companies").select("slug").eq("slug", safeCompanySlug).limit(1);
+        if (!((coChk as Array<{ slug: string }> | null)?.length)) safeCompanySlug = null;
+      }
       const { error: ie } = await supabase.from("audit_history").insert({
-        protocol_slug: m.protocol_slug, company_slug: m.company_slug, protocol_name: m.protocol_name || a.client_name,
+        protocol_slug: m.protocol_slug, company_slug: safeCompanySlug, protocol_name: m.protocol_name || a.client_name,
         audit_firm: source.firm_name, audit_date: a.audit_date, audit_type: a.audit_type, report_url: a.url || null,
         smart_contract_language: a.language, data_source: "scrape:" + firmSlug,
         // Record HOW the client was linked, so a bad matching rule can be
         // traced and reversed later instead of being invisible.
-        match_via: m.via,
+        match_via: safeCompanySlug ? m.via : m.via + ":unresolved_company",
       });
       if (!ie) inserted++;
       else if (ie.code === "23505") dupes++;

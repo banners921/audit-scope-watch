@@ -179,11 +179,22 @@ async function processOne(admin: any, queueRow: { id: string; url: string }) {
     if (byFirm) auditId = byFirm.id;
   }
 
+  // slugInfo.protocolSlug is derived from the Solodit title, not resolved
+  // against companies. Written unvalidated it leaves rows pointing at a company
+  // that does not exist. Resolve it once and reuse for both audit_history and
+  // audit_findings_detail; blank if unresolved, so the enrichment drain links it
+  // under the exact-match or two-source rule. Never created from the slug alone.
+  let soloditCompanySlug: string | null = slugInfo.protocolSlug ?? null;
+  if (soloditCompanySlug) {
+    const { data: coChk } = await admin.from("companies").select("slug").eq("slug", soloditCompanySlug).limit(1);
+    if (!((coChk as Array<{ slug: string }> | null)?.length)) soloditCompanySlug = null;
+  }
+
   // 3) Otherwise create new audit_history
   if (!auditId) {
     const auditType = ["Code4rena", "Sherlock", "Cantina", "CodeHawks"].includes(slugInfo.firm) ? "contest" : "smart_contract_audit";
     const { data: inserted, error: insErr } = await admin.from("audit_history").insert({
-      company_slug: slugInfo.protocolSlug, protocol_name: slugInfo.protocol,
+      company_slug: soloditCompanySlug, protocol_name: slugInfo.protocol,
       audit_firm: slugInfo.firm, audit_type: auditType, audit_date: body.date,
       report_url: reportUrl, findings_extracted_at: new Date().toISOString(),
       findings_extraction_status: "extracted",
@@ -210,7 +221,7 @@ async function processOne(admin: any, queueRow: { id: string; url: string }) {
 
   const summaryWithAuthor = body.submittedBy ? `[Submitted by ${body.submittedBy}] ${body.summary}` : body.summary;
   const { error: findErr } = await admin.from("audit_findings_detail").insert({
-    audit_id: auditId, company_slug: slugInfo.protocolSlug,
+    audit_id: auditId, company_slug: soloditCompanySlug,
     severity: slugInfo.severity, title,
     summary: (summaryWithAuthor || `${slugInfo.severity.toUpperCase()} finding in ${slugInfo.protocol}`).slice(0, 800),
     status: body.status,
