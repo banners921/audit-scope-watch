@@ -12,6 +12,11 @@ const TIME_BUDGET_MS = 110_000;
 // The worker also has a CPU cap (546 WORKER_RESOURCE_LIMIT); a first pass that
 // links every row ran out at ~30 pages. Keep each call well under that.
 const MAX_PAGES_PER_CALL = 12;
+// A run holding the lock longer than this is assumed dead (the worker caps a
+// request at 150s), so the next call may take over.
+const LOCK_STALE_MS = 3 * 60_000;
+// Prune only when a completed pass saw at least this share of the last known total.
+const PRUNE_MIN_SHARE = 0.98;
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-key", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 function json(s: number, b: unknown) { return new Response(JSON.stringify(b), { status: s, headers: { ...CORS, "Content-Type": "application/json" } }); }
 function slugify(s: string): string { return (s || "").toString().toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80); }
@@ -88,7 +93,7 @@ Deno.serve(async (req) => {
   const forceLogo = body.force_overwrite_logo === true;
 
   // A full pass spans several invocations; the cursor lives in sync_counts.
-  const { data: state } = await admin.from("sync_counts").select("cursor_offset,pass_seen").eq("source", SOURCE).maybeSingle();
+  const { data: state } = await admin.from("sync_counts").select("cursor_offset,pass_seen,expected").eq("source", SOURCE).maybeSingle();
   let offset = body.restart ? 0 : (state?.cursor_offset ?? 0);
   let passSeen = body.restart ? 0 : (state?.pass_seen ?? 0);
 
@@ -96,6 +101,25 @@ Deno.serve(async (req) => {
     const r = await fetchPage(w3lKey, offset, deadline);
     if ("error" in r) return json(200, { ok: false, offset, error: r.error });
     return json(200, { ok: true, offset, fetched: r.rows.length, first_id: r.rows[0]?.id, last_id: r.rows.at(-1)?.id, sample_keys: Object.keys(r.rows[0] || {}) });
+  }
+
+  // One run at a time: the 10-minute cron and a manual call must not interleave
+  // cursor writes or race on inserts.
+  const staleBefore = new Date(Date.now() - LOCK_STALE_MS).toISOString();
+  const { data: lock } = await admin.from("sync_counts")
+    .update({ running_since: new Date().toISOString() })
+    .eq("source", SOURCE)
+    .or(`running_since.is.null,running_since.lt.${staleBefore}`)
+    .select("source");
+  if (!lock || lock.length === 0) return json(200, { ok: true, skipped: "another run is in progress" });
+
+  // A new pass starts with an empty seen-set; the prune compares against it.
+  if (offset === 0 && passSeen === 0) {
+    const { error } = await admin.from("sync_seen_ids").delete().eq("source", SOURCE);
+    if (error) {
+      await admin.from("sync_counts").update({ running_since: null }).eq("source", SOURCE);
+      return json(500, { error: `reset seen ids: ${error.message}` });
+    }
   }
 
   const existingFunds = await fetchAllExistingFunds(admin);
@@ -120,6 +144,14 @@ Deno.serve(async (req) => {
     const page = await fetchPage(w3lKey, offset, deadline);
     if ("error" in page) { notice = page.error; if (!page.retryable) errors.push(page.error); break; }
     const rows = page.rows;
+
+    // Record every upstream id on the page, whatever happens to the row below.
+    const ids = rows.map((f: any) => f.id).filter((x: unknown) => x != null).map((x: unknown) => ({ source: SOURCE, upstream_id: String(x) }));
+    if (ids.length) {
+      const { error } = await admin.from("sync_seen_ids").upsert(ids, { onConflict: "source,upstream_id", ignoreDuplicates: true });
+      // A short seen-set only makes the prune guard refuse; never a wrong delete.
+      if (error) errors.push(`seen ids: ${error.message}`);
+    }
 
     for (const f of rows) {
       const w3lId = f.id != null ? String(f.id) : null;
@@ -187,9 +219,26 @@ Deno.serve(async (req) => {
     await saveCursor({ cursor_offset: offset, pass_seen: passSeen });
   }
 
+  // Prune rows this pass didn't see, only after a complete pass. The SQL
+  // function re-checks the 98% guard against its own count of seen ids.
+  let prune: any = null;
+  if (complete) {
+    const prevExpected = state?.expected ?? null;
+    if (prevExpected == null || passSeen < Math.ceil(prevExpected * PRUNE_MIN_SHARE)) {
+      prune = { pruned: 0, skipped: `pass saw ${passSeen}, below 98% of expected ${prevExpected ?? "unknown"}` };
+    } else {
+      const { data, error } = await admin.rpc("prune_orphan_funds", { p_expected: prevExpected, p_pass_seen: passSeen });
+      prune = error ? { pruned: 0, skipped: `prune failed: ${error.message}` } : data;
+      if (error) errors.push(`prune: ${error.message}`);
+    }
+  }
+
   const { count: received } = await admin.from("funds").select("slug", { count: "exact", head: true }).not("w3l_id", "is", null);
   const now = new Date().toISOString();
-  const stateUpdate: any = { received, last_run_at: now, last_error: errors[0] ?? notice ?? null };
+  const stateUpdate: any = { received, last_run_at: now, last_error: errors[0] ?? notice ?? null, running_since: null };
+  if (prune) {
+    Object.assign(stateUpdate, { last_pruned: prune.pruned ?? 0, last_prune_at: now, last_prune_note: prune.skipped ?? `pruned ${prune.pruned} of ${prune.candidates} candidates` });
+  }
   if (complete) {
     // Only a pass that reached the last page may set the expected total.
     Object.assign(stateUpdate, { expected: passSeen, complete_at: now, cursor_offset: 0, pass_seen: 0 });
@@ -202,6 +251,7 @@ Deno.serve(async (req) => {
     ok: errors.length === 0, complete, next_offset: complete ? 0 : offset, pass_seen: passSeen,
     expected: complete ? passSeen : undefined, received,
     inserted, updated, linked, matched_by_name, logos_overwritten, fields_filled: fieldsFilled, no_change, skipped_nameless,
+    pruned: prune?.pruned, prune_skipped: prune?.skipped, prune_details: prune?.details,
     elapsed_ms: Date.now() - started, errors: errors.slice(0, 5), notice,
   });
 });
