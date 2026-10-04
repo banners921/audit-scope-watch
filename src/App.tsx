@@ -36,6 +36,7 @@ import Onboarding from "./pages/Onboarding";
 import Watchlist from "./pages/Watchlist";
 import CompaniesBrowse from "./pages/CompaniesBrowse";
 import FundsBrowse from "./pages/FundsBrowse";
+import SecurityInvestors from "./pages/SecurityInvestors";
 import FundingRoundsBrowse from "./pages/FundingRoundsBrowse";
 import AuditsBrowse from "./pages/AuditsBrowse";
 import AuditorsBrowse from "./pages/AuditorsBrowse";
@@ -106,6 +107,7 @@ const App = () => (
             <Route path="/auditors/:firm" element={<ProtectedRoute><AuditorDetail /></ProtectedRoute>} />
             <Route path="/funding-rounds/legacy" element={<ProtectedRoute><FundingRounds /></ProtectedRoute>} />
             <Route path="/funds" element={<ProtectedRoute><FundsBrowse /></ProtectedRoute>} />
+            <Route path="/security-investors" element={<ProtectedRoute><SecurityInvestors /></ProtectedRoute>} />
             <Route path="/funds-legacy" element={<ProtectedRoute><Funds /></ProtectedRoute>} />
             <Route path="/funds/:slug" element={<ProtectedRoute><FundDetail /></ProtectedRoute>} />
             <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />

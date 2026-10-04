@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { Search, Wallet, ArrowUpDown } from "lucide-react";
+import { Search, Wallet, ArrowUpDown, ShieldHalf } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { EntityCard } from "@/components/EntityCard";
 import { ViewToggle, loadViewMode, saveViewMode, type ViewMode } from "@/components/ViewToggle";
@@ -37,6 +37,30 @@ export default function FundsBrowse() {
     },
   });
 
+  // Self-check: every fund in the web3leads funds table should be here. The
+  // expected total is recorded by sync-funds-from-web3leads only when a pass
+  // reaches the last page, so a truncated pull can't lower it silently.
+  const syncQ = useQuery({
+    queryKey: ["funds-sync-check"],
+    queryFn: async () => {
+      const [state, linked] = await Promise.all([
+        supabase.from("sync_counts").select("expected,complete_at,last_error").eq("source", "web3leads_funds").maybeSingle(),
+        supabase.from("funds").select("slug", { count: "exact", head: true }).not("w3l_id", "is", null),
+      ]);
+      if (state.error) throw state.error;
+      if (linked.error) throw linked.error;
+      return { expected: state.data?.expected ?? null, received: linked.count ?? 0, completeAt: state.data?.complete_at ?? null, lastError: state.data?.last_error ?? null };
+    },
+  });
+  const sync = syncQ.data;
+  const shortfall = sync && sync.expected != null ? sync.expected - sync.received : null;
+  useEffect(() => {
+    if (!sync) return;
+    const msg = `[funds self-check] web3leads expected=${sync.expected ?? "unknown"} received=${sync.received}`;
+    if (sync.expected == null || shortfall !== 0) console.warn(`${msg} — MISMATCH (shortfall ${shortfall ?? "unknown"})`);
+    else console.info(`${msg} — ok`);
+  }, [sync, shortfall]);
+
   return (
     <div className="max-w-[1280px] mx-auto space-y-4">
       <header className="flex items-end justify-between gap-3">
@@ -45,7 +69,22 @@ export default function FundsBrowse() {
           <h1 className="text-2xl font-semibold text-foreground tracking-tight mt-0.5">
             {rowsQ.data?.count?.toLocaleString() ?? "—"} crypto funds tracked
           </h1>
+          {sync && (
+            <div
+              className={`mt-1 text-[11.5px] font-mono tabular-nums ${shortfall === 0 ? "text-muted-foreground" : "text-amber-400"}`}
+              title={sync.completeAt ? `Last complete web3leads sync: ${new Date(sync.completeAt).toLocaleString()}` : "No complete web3leads sync recorded"}
+            >
+              {sync.received.toLocaleString()} / {sync.expected?.toLocaleString() ?? "?"} web3leads funds synced
+              {shortfall !== 0 && ` — ${shortfall == null ? "expected count unknown" : `${shortfall.toLocaleString()} missing`}`}
+            </div>
+          )}
         </div>
+        <Link
+          to="/security-investors"
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-white/[0.06] text-[12px] text-muted-foreground hover:text-foreground hover:bg-white/[0.03]"
+        >
+          <ShieldHalf className="w-3.5 h-3.5" /> Security investors
+        </Link>
         <div className="relative w-64">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <input

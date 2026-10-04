@@ -15,6 +15,7 @@ import {
   Banknote,
   Home,
   Radar,
+  ShieldHalf,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Logo } from "./Logo";
@@ -28,6 +29,7 @@ const TITLES: Record<string, string> = {
   "/dashboard": "Home",
   "/watchlist": "Watchlist",
   "/funds": "Funds",
+  "/security-investors": "Security investors",
   "/funding-rounds": "Funding rounds",
   "/companies": "Companies",
   "/audit-reports": "Audits",
@@ -46,6 +48,7 @@ const NAV = [
   { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/funding-rounds", label: "Funding rounds", icon: Banknote },
   { to: "/funds", label: "Funds", icon: Wallet },
+  { to: "/security-investors", label: "Security investors", icon: ShieldHalf, sub: true },
 ] as const;
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -157,10 +160,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 key={n.to}
                 to={n.to}
                 onClick={() => setMobileOpen(false)}
-                className={itemClass}
+                className={(st) => `${itemClass(st)}${n.sub && !collapsed ? " pl-8 py-2 text-[13px]" : ""}`}
                 title={collapsed ? n.label : undefined}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <Icon className={n.sub ? "w-3.5 h-3.5 shrink-0" : "w-4 h-4 shrink-0"} />
                 {!collapsed && <span className="font-medium flex-1">{n.label}</span>}
               </NavLink>
             );
