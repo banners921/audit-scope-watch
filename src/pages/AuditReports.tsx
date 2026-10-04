@@ -135,6 +135,7 @@ export default function AuditReports() {
                     <div className="text-[11px] text-muted-foreground">{r.audit_date || "date unknown"}</div>
                   </div>
                 </Link>
+                <Link to={`/audits/${r.id}`} className="text-[11px] text-primary hover:underline -mt-1">Audit details →</Link>
                 <Link to={`/auditors/${encodeURIComponent(r.audit_firm || "")}`} className="flex items-center gap-2 group/firm">
                   <BrandLogo name={r.audit_firm || "Unknown"} logo={r.audit_firm ? firmLogosQ.data?.[r.audit_firm] : null} className="w-6 h-6 rounded-md" />
                   <span className="text-[12px] text-muted-foreground group-hover/firm:text-primary truncate">
@@ -190,7 +191,9 @@ export default function AuditReports() {
                           <span className="text-muted-foreground group-hover:text-primary truncate max-w-[150px]">{r.audit_firm || "Unknown"}</span>
                         </Link>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">{r.audit_date || "—"}</td>
+                      <td className="px-3 py-2 tabular-nums whitespace-nowrap">
+                        <Link to={`/audits/${r.id}`} className="text-muted-foreground hover:text-primary hover:underline" title="Audit details">{r.audit_date || "details"}</Link>
+                      </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1">
                           {findings.length > 0 ? findings.map((s) => (

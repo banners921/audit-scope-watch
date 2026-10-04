@@ -112,6 +112,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       ? "Company"
       : pathname.startsWith("/funds/")
       ? "Fund"
+      : pathname.startsWith("/audits/")
+      ? "Audit"
       : pathname.startsWith("/auditors/")
       ? "Audit firm"
       : "AuditScope");

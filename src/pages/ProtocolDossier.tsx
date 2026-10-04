@@ -207,10 +207,10 @@ export default function ProtocolDossier() {
           <div className="space-y-1.5">
             {audits.map((a) => (
               <div key={a.id} className="flex items-center gap-3 py-2 px-3 rounded-lg border border-white/[0.05] hover:bg-white/[0.02] text-[12.5px]">
-                <div className="flex-1 min-w-0">
-                  <div className="text-foreground font-medium truncate">{a.audit_firm || "Unknown firm"}</div>
+                <Link to={`/audits/${a.id}`} className="flex-1 min-w-0 group" title="Audit details">
+                  <div className="text-foreground font-medium truncate group-hover:text-primary">{a.audit_firm || "Unknown firm"}</div>
                   <div className="text-[11px] text-muted-foreground">{a.audit_date || "date unknown"}{a.audit_type ? ` · ${a.audit_type}` : ""}</div>
-                </div>
+                </Link>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {(["critical", "high", "medium", "low"] as const).map((s) => {
                     const key = `findings_${s}` as keyof Audit;

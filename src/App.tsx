@@ -37,6 +37,7 @@ import Watchlist from "./pages/Watchlist";
 import CompaniesBrowse from "./pages/CompaniesBrowse";
 import FundsBrowse from "./pages/FundsBrowse";
 import SecurityInvestors from "./pages/SecurityInvestors";
+import AuditDetail from "./pages/AuditDetail";
 import FundingRoundsBrowse from "./pages/FundingRoundsBrowse";
 import AuditsBrowse from "./pages/AuditsBrowse";
 import AuditorsBrowse from "./pages/AuditorsBrowse";
@@ -95,6 +96,7 @@ const App = () => (
             <Route path="/bug-bounties" element={<ProtectedRoute><BugBounties /></ProtectedRoute>} />
             <Route path="/smart-contracts" element={<ProtectedRoute><SmartContracts /></ProtectedRoute>} />
             <Route path="/audit-reports" element={<ProtectedRoute><AuditReports /></ProtectedRoute>} />
+            <Route path="/audits/:id" element={<ProtectedRoute><AuditDetail /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="/radar" element={<ProtectedRoute><Radar /></ProtectedRoute>} />
             <Route path="/research" element={<Navigate to="/companies" replace />} />

@@ -279,7 +279,7 @@ export default function AuditedRepos() {
                     {r.audit_firm ? (
                       <Link to={`/auditors/${encodeURIComponent(r.audit_firm)}`} className="text-white/85 font-medium hover:text-primary">{r.audit_firm}</Link>
                     ) : <span>—</span>}
-                    <span className="ml-auto tabular-nums">{r.audit_date || tightAgo(r.audit_date)}</span>
+                    <Link to={`/audits/${r.id}`} className="ml-auto tabular-nums hover:text-primary hover:underline" title="Audit details">{r.audit_date || tightAgo(r.audit_date)}</Link>
                   </div>
 
                   {/* Repo — only clickable when HEAD-verified as 200. Broken/unverified rows show struck-through.
