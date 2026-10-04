@@ -76,7 +76,10 @@ Deno.serve(async (req) => {
       company_slug: companySlug,
       platform: "Immunefi",
       max_bounty_usd: null,
-      program_url: `https://immunefi.com/bug-bounty/${slug}/`,
+      // No trailing slash: earlier rows were written without one, so emitting
+      // it here stored every program a second time under a second slug. The
+      // database now enforces this too (bug_bounties_platform_norm_url_unique).
+      program_url: `https://immunefi.com/bug-bounty/${slug}`,
       is_active: true,
       last_updated: new Date().toISOString(),
     };

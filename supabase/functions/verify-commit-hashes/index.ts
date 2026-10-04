@@ -308,8 +308,149 @@ Deno.serve(async (req) => {
   const cronKey = req.headers.get("x-cron-key") || "";
   if (cronKey !== CRON_KEY) return json(401, { error: "Unauthorized" });
   const admin = createClient(supabaseUrl, serviceKey);
-  const body = (await req.json().catch(() => ({}))) as { limit?: number; retry_invalid?: boolean; backfill_org?: boolean; revalidate_org?: boolean; commit_backfill?: boolean; discover_firm?: string; discover_ext?: "md" | "pdf"; discover_addresses?: string };
+  const body = (await req.json().catch(() => ({}))) as { limit?: number; retry_invalid?: boolean; backfill_org?: boolean; revalidate_org?: boolean; commit_backfill?: boolean; discover_firm?: string; discover_ext?: "md" | "pdf"; discover_addresses?: string; discover_c4_api?: boolean; dry_run?: boolean };
   const limit = Math.min(Math.max(body.limit ?? 25, 1), 100);
+
+  // ---- discover_c4_api -----------------------------------------------------
+  // Code4rena publishes every contest through its own paginated JSON API
+  // (code4rena.com/api/v1/audits), keyless and free, and each entry states the
+  // audited code repo AND the findings repo as first-class fields. Our C4 rows
+  // carry the findings repo in report_url, so the findings repo is the join key
+  // and C4's own answer supplies audited_repo_url — an authoritative identifier,
+  // not a name guess.
+  //
+  // Two conventions were tested and deliberately NOT used as shortcuts:
+  //   repo == github.com/code-423n4/<contest slug>  is wrong for 366 of 475.
+  //   findingsRepo == repo + "-findings"            is wrong for 9 of 456
+  //     (2023-06-angle-findings points at 2022-01-dev-test-repo; the two GTE
+  //     contests share one findings repo).
+  // So the mapping is read from the API per contest and never reconstructed.
+  if (body.discover_c4_api) {
+    const dryRun = body.dry_run === true;
+    const norm = (u: string) => u.toLowerCase().replace(/\.git$/, "").replace(/\/+$/, "");
+    const ghName = (u: string) => {
+      const m = norm(u).match(/code-423n4\/([a-z0-9._-]+)/);
+      return m ? m[1] : null;
+    };
+
+    // 1. Page the API to exhaustion, driven by its own pagination block.
+    const contests: Array<{ slug: string; repo: string | null; findingsRepo: string | null; startTime: string | null; endTime: string | null; status: string | null; auditType: string | null }> = [];
+    let page = 1, lastPage = 1, apiErrors = 0;
+    while (page <= lastPage && page <= 40) {
+      let ok = false;
+      for (let attempt = 0; attempt < 2 && !ok; attempt++) {
+        try {
+          const r = await fetch(`https://code4rena.com/api/v1/audits?page=${page}`, {
+            headers: { Accept: "application/json", "User-Agent": "auditscope-c4-mapper" },
+          });
+          if (!r.ok) { apiErrors++; break; }
+          const j = await r.json();
+          const arr = j?.data?.audits;
+          if (!Array.isArray(arr)) { apiErrors++; break; }
+          for (const a of arr) {
+            if (!a?.slug) continue;
+            contests.push({
+              slug: String(a.slug),
+              repo: a.repo ? String(a.repo) : null,
+              findingsRepo: a.findingsRepo ? String(a.findingsRepo) : null,
+              startTime: a.startTime ? String(a.startTime) : null,
+              endTime: a.endTime ? String(a.endTime) : null,
+              status: a.status ? String(a.status) : null,
+              auditType: a.auditType ? String(a.auditType) : null,
+            });
+          }
+          lastPage = Number(j?.pagination?.lastPage) || lastPage;
+          ok = true;
+        } catch { apiErrors++; }
+      }
+      if (!ok) break;
+      page++;
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    if (contests.length === 0) return json(200, { ok: false, mode: "discover_c4_api", error: "api_returned_no_contests", api_errors: apiErrors });
+
+    // 2. Index by findings-repo name, and by code-repo name as a fallback for
+    //    the 19 contests that have no findings repo. A name claimed by two
+    //    different code repos is dropped rather than guessed at.
+    //    C4's own API carries a few bad rows, and trusting the field blindly
+    //    would import their error as our data: 2023-06-angle-findings points at
+    //    2022-01-dev-test-repo, and 2021-04-meebits-findings at 2021-04-redacted.
+    //    So a pair must share at least one name token that is not a bare number
+    //    — a shared year or month proves nothing. That rejects both of those
+    //    while still accepting genuine renames (2021-04-basedloans-findings ->
+    //    basedloans, ...-mitigation-findings -> ...-mitigation-contest).
+    const nameTokens = (s: string) =>
+      new Set(s.split(/[-_.]+/).filter((tok) => tok && tok !== "findings" && !/^\d+$/.test(tok)));
+    const plausiblePair = (findingsKey: string, repoKey: string) => {
+      if (findingsKey === repoKey + "-findings" || findingsKey === repoKey) return true;
+      const a = nameTokens(findingsKey), b = nameTokens(repoKey);
+      for (const tok of a) if (b.has(tok)) return true;
+      return false;
+    };
+
+    const byFindings = new Map<string, string>();
+    const ambiguous = new Set<string>();
+    let rejectedImplausible = 0;
+    const rejectedSamples: any[] = [];
+    for (const c of contests) {
+      if (!c.repo) continue;
+      const repoKey = ghName(c.repo);
+      if (!repoKey) continue;
+      for (const key of [c.findingsRepo ? ghName(c.findingsRepo) : null, repoKey]) {
+        if (!key) continue;
+        if (!plausiblePair(key, repoKey)) {
+          rejectedImplausible++;
+          if (rejectedSamples.length < 10) rejectedSamples.push({ findings_key: key, repo: c.repo, slug: c.slug });
+          continue;
+        }
+        const prior = byFindings.get(key);
+        if (prior && norm(prior) !== norm(c.repo)) { ambiguous.add(key); continue; }
+        byFindings.set(key, c.repo);
+      }
+    }
+    for (const k of ambiguous) byFindings.delete(k);
+
+    // 3. Only fill rows that have no repo yet. Existing values are left alone:
+    //    overwriting a verified link on the strength of a fresh source is not
+    //    this pass's job.
+    const { data: targets, error: terr } = await admin.from("audit_history")
+      .select("id, report_url, audited_repo_url")
+      .eq("audit_firm", "Code4rena")
+      .is("audited_repo_url", null)
+      .limit(2000);
+    if (terr) return json(500, { error: terr.message });
+
+    let matched = 0, unmatched = 0, updated = 0, ambiguousHits = 0;
+    const samples: any[] = [];
+    for (const row of (targets ?? []) as Array<{ id: string; report_url: string | null }>) {
+      if (!row.report_url) { unmatched++; continue; }
+      const key = ghName(row.report_url);
+      if (!key) { unmatched++; continue; }
+      if (ambiguous.has(key)) { ambiguousHits++; unmatched++; continue; }
+      const repo = byFindings.get(key);
+      if (!repo) { unmatched++; continue; }
+      matched++;
+      if (samples.length < 10) samples.push({ report_url: row.report_url, key, repo });
+      if (dryRun) continue;
+      const { error } = await admin.from("audit_history")
+        // Status intentionally left null, not "valid": C4's API is authoritative
+        // for WHICH repo a contest audited, but says nothing about whether the
+        // URL still resolves on GitHub. The normal verification pass checks
+        // that, so these enter the queue like any other discovered repo.
+        .update({ audited_repo_url: repo, repo_url_status: null })
+        .eq("id", row.id);
+      if (!error) updated++;
+    }
+
+    return json(200, {
+      ok: true, mode: "discover_c4_api", dry_run: dryRun,
+      contests: contests.length, pages_read: page - 1, api_errors: apiErrors,
+      mapping_keys: byFindings.size, ambiguous_keys: ambiguous.size,
+      rejected_implausible: rejectedImplausible, rejected_samples: rejectedSamples,
+      candidates: (targets ?? []).length, matched, unmatched, ambiguous_hits: ambiguousHits, updated,
+      samples,
+    });
+  }
 
   if (body.discover_addresses) {
     const firm = body.discover_addresses;

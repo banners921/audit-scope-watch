@@ -17,7 +17,41 @@ function toRawUrl(url: string): string {
 async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 async function fetchMarkdown(url: string): Promise<{ text: string } | { error: string }> { try { const r = await fetch(toRawUrl(url), { headers: { "User-Agent": "auditscope-extractor" } }); if (!r.ok) return { error: `http ${r.status}` }; const text = await r.text(); if (text.length < 200) return { error: "too short" }; return { text: text.slice(0, TEXT_MAX_CHARS) }; } catch (e) { return { error: `fetch err: ${String(e).slice(0, 100)}` }; } }
-async function fetchViaJina(url: string, attempt = 1): Promise<{ text: string } | { error: string; rateLimited?: boolean }> { try { const target = `https://r.jina.ai/${toRawUrl(url)}`; const jinaKey = Deno.env.get("JINA_API_KEY"); const headers: Record<string, string> = { "User-Agent": "AuditScope/1.0", "X-Return-Format": "text" }; if (jinaKey) headers.Authorization = `Bearer ${jinaKey}`; const r = await fetch(target, { headers }); if (r.ok) { const txt = await r.text(); if (txt && txt.length > 300) return { text: txt.slice(0, TEXT_MAX_CHARS) }; return { error: "jina too short" }; } if ((r.status === 401 || r.status === 429) && attempt < 3) { const delay = 2000 * attempt + Math.floor(Math.random() * 2000); await sleep(delay); return fetchViaJina(url, attempt + 1); } return { error: `jina ${r.status}`, rateLimited: (r.status === 401 || r.status === 429) }; } catch (e) { return { error: `jina err: ${String(e).slice(0, 100)}` }; } }
+// Jina's keyed plan is out of credits, and sending the exhausted key makes the
+// request fail (402) where an anonymous one succeeds on the free tier — so a
+// keyed 401/402/403 is retried with no Authorization header rather than being
+// treated as a dead end. Verified against hacken.io report pages, which return
+// full findings text anonymously.
+async function jinaAttempt(url: string, useKey: boolean): Promise<Response | null> {
+  const headers: Record<string, string> = { "User-Agent": "AuditScope/1.0", "X-Return-Format": "text" };
+  const jinaKey = useKey ? Deno.env.get("JINA_API_KEY") : null;
+  if (jinaKey) headers.Authorization = `Bearer ${jinaKey}`;
+  try { return await fetch(`https://r.jina.ai/${toRawUrl(url)}`, { headers }); } catch { return null; }
+}
+
+async function fetchViaJina(url: string, attempt = 1): Promise<{ text: string } | { error: string; rateLimited?: boolean }> {
+  try {
+    let r = await jinaAttempt(url, true);
+    // 402 = credits exhausted, 401/403 = key rejected. None of these mean the
+    // page is unreachable, so fall back to an anonymous request.
+    if (r && (r.status === 402 || r.status === 401 || r.status === 403) && Deno.env.get("JINA_API_KEY")) {
+      const anon = await jinaAttempt(url, false);
+      if (anon) r = anon;
+    }
+    if (!r) return { error: "jina err: request failed" };
+    if (r.ok) {
+      const txt = await r.text();
+      if (txt && txt.length > 300) return { text: txt.slice(0, TEXT_MAX_CHARS) };
+      return { error: "jina too short" };
+    }
+    if ((r.status === 401 || r.status === 429) && attempt < 3) {
+      const delay = 2000 * attempt + Math.floor(Math.random() * 2000);
+      await sleep(delay);
+      return fetchViaJina(url, attempt + 1);
+    }
+    return { error: `jina ${r.status}`, rateLimited: (r.status === 401 || r.status === 429) };
+  } catch (e) { return { error: `jina err: ${String(e).slice(0, 100)}` }; }
+}
 async function fetchViaFirecrawl(url: string, apiKey: string): Promise<{ text: string } | { error: string }> { try { const targetUrl = toRawUrl(url); const isJsHeavy = /hacken\.io|hashlock\.com|cantina\.xyz|certik\.com/i.test(targetUrl); const r = await fetch("https://api.firecrawl.dev/v1/scrape", { method: "POST", headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ url: targetUrl, formats: ["markdown"], waitFor: isJsHeavy ? 5000 : 2000, timeout: 90000 }) }); if (!r.ok) { const t = await r.text().catch(() => ""); return { error: `firecrawl ${r.status}: ${t.slice(0, 80)}` }; } const j = await r.json(); const md = j?.data?.markdown || j?.markdown || ""; if (!md || md.length < 200) return { error: "firecrawl text too short" }; return { text: String(md).slice(0, TEXT_MAX_CHARS) }; } catch (e) { return { error: `firecrawl err: ${String(e).slice(0, 100)}` }; } }
 async function fetchHtmlDirect(url: string): Promise<{ text: string } | { error: string }> { try { const r = await fetch(toRawUrl(url), { headers: { "User-Agent": "Mozilla/5.0 (auditscope)" }, redirect: "follow" }); if (!r.ok) return { error: `http ${r.status}` }; const html = await r.text(); if (html.length < 500) return { error: "html too short" }; const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, " ").trim(); if (stripped.length < 200) return { error: "html text too short" }; return { text: stripped.slice(0, TEXT_MAX_CHARS) }; } catch (e) { return { error: `html err: ${String(e).slice(0, 100)}` }; } }
 async function fetchWayback(url: string): Promise<{ archived_url: string } | null> { try { const r = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(url)}`); if (!r.ok) return null; const j = await r.json(); const archived = j?.archived_snapshots?.closest?.url; if (archived && j.archived_snapshots.closest.available) return { archived_url: String(archived) }; return null; } catch { return null; } }
@@ -66,13 +100,41 @@ async function extractWithAnthropic(apiKey: string, text: string): Promise<any> 
   return extractJson(j?.content?.[0]?.text || "");
 }
 
+/**
+ * True for a firm URL that is a LISTING of a company's audits, not a report.
+ * hacken.io/audits/<company> shows links to that company's reports and no
+ * findings of its own, so no fetcher at any price can extract anything from it
+ * — Firecrawl returned 402 on 869 of these, and Jina "succeeds" on them with
+ * ~2KB of nav chrome and a cookie banner, which would sail past the length
+ * check and be billed to the model as if it were a report. Excluded outright.
+ * A deeper path (hacken.io/audits/<company>/<report>/) IS a report page.
+ */
+function isNonReportListing(url: string): boolean {
+  return /^https?:\/\/(?:www\.)?hacken\.io\/audits\/[^/?#]+\/?(?:[?#].*)?$/i.test(String(url ?? ""));
+}
+
 async function fetchAny(url: string, firecrawlKey: string | null): Promise<{ text: string; source: string } | { error: string; rateLimited?: boolean }> {
   const isPdf = /\.pdf($|\?)/i.test(url);
   const isMarkdown = /\.md($|\?)/i.test(url) || /\/blob\/.*\/README\.md/i.test(url);
   const isFirmLanding = /hacken\.io\/audits|hashlock\.com\/audits|cantina\.xyz\/portfolio|certik\.com/i.test(url);
   if (isMarkdown) { const r = await fetchMarkdown(url); if (!("error" in r)) return { text: r.text, source: "md" }; const j = await fetchViaJina(url); if (!("error" in j)) return { text: j.text, source: "jina-md" }; if (r.error.includes("404") || r.error.startsWith("http 4")) { const wb = await fetchWayback(url); if (wb) { const w = await fetchMarkdown(wb.archived_url); if (!("error" in w)) return { text: w.text, source: "md+wayback" }; } } return { error: r.error }; }
   if (isPdf) { const j = await fetchViaJina(url); if (!("error" in j)) return { text: j.text, source: "jina-pdf" }; if (firecrawlKey) { const fc = await fetchViaFirecrawl(url, firecrawlKey); if (!("error" in fc)) return { text: fc.text, source: "firecrawl-pdf" }; } return { error: j.error, rateLimited: j.rateLimited }; }
-  if (isFirmLanding && firecrawlKey) { const fc = await fetchViaFirecrawl(url, firecrawlKey); if (!("error" in fc)) return { text: fc.text, source: "firecrawl-firm" }; return { error: fc.error }; }
+  // Firm landing pages used to go straight to Firecrawl with no fallback, which
+  // is why every one of them failed once its credits ran out. Jina renders
+  // these fine — verified on hacken.io/audits/<company>/<report>/ (severity
+  // table, scores, findings) and cantina.xyz/portfolio/<id> (27KB, commits) —
+  // and costs nothing, so it goes first. Direct fetch is still skipped: Hacken
+  // answers a plain request with 403 behind Cloudflare.
+  if (isFirmLanding) {
+    const j = await fetchViaJina(url);
+    if (!("error" in j)) return { text: j.text, source: "jina-firm" };
+    if (firecrawlKey) {
+      const fc = await fetchViaFirecrawl(url, firecrawlKey);
+      if (!("error" in fc)) return { text: fc.text, source: "firecrawl-firm" };
+      return { error: `${j.error}; ${fc.error}` };
+    }
+    return { error: j.error, rateLimited: j.rateLimited };
+  }
   const html = await fetchHtmlDirect(url); if (!("error" in html)) return { text: html.text, source: "html" };
   const j = await fetchViaJina(url); if (!("error" in j)) return { text: j.text, source: "jina-html" };
   if (firecrawlKey) { const fc = await fetchViaFirecrawl(url, firecrawlKey); if (!("error" in fc)) return { text: fc.text, source: "firecrawl-html" }; }
@@ -94,12 +156,70 @@ function validAuditDate(s: any): string | null {
   return `${m[1]}-${m[2]}-${m[3]}`;
 }
 
+/**
+ * True when a failure is an account-level outage rather than anything about
+ * this row: exhausted credits or a throughput cap on Anthropic, Jina or
+ * Firecrawl. These must never produce a terminal per-row status. Marking them
+ * terminal would convert one billing lapse into thousands of permanently
+ * abandoned rows — measured at 25 rows per two-minute cron tick against a
+ * 9,610-row backfill pool, so the whole pool inside a day.
+ */
+function isTransientOutage(err: string): boolean {
+  return /credit balance is too low|insufficient credits|Anthropic (429|529)|\b402\b|rate limit|throughput limit|quota/i.test(err);
+}
+
+/**
+ * Record a failed extraction attempt.
+ *
+ * The bug this replaces: every failure branch wrote the status as
+ *   isRepoBackfill ? 'extracted' : <the real failure>
+ * so in repo-backfill mode a failed fetch or a refused model call was recorded
+ * as a successful extraction. That is what made 30 rows look freshly extracted
+ * in a 24h window in which the Anthropic key had no credit at all.
+ *
+ * Fixed in both directions rather than by writing llm_failed everywhere:
+ *   - Normal mode (the row has never been extracted): write the real failure
+ *     status, so nothing claims success.
+ *   - Repo-backfill mode: the row was ALREADY successfully extracted — that is
+ *     the pool's entry condition — and all 9,610 such rows carry real findings
+ *     counts that feed compute-risk-scores, Prospects, Compare, AuditorIntel
+ *     and LPReport, every one of which filters on findings_extraction_status
+ *     being 'extracted'. Overwriting that would not be more honest, it would be
+ *     a different untruth, and it would silently drop those audits out of risk
+ *     scoring and customer reports. So the findings status is left alone and
+ *     the failure is recorded against the thing that actually failed — the repo
+ *     backfill — reusing the existing repo_url_status vocabulary. That also
+ *     lifts the row out of the retry_no_repo pool, ending an unbounded retry.
+ */
+async function recordFailure(
+  admin: any,
+  rowId: string,
+  isRepoBackfill: boolean,
+  status: string,
+  dryRun: boolean,
+) {
+  if (dryRun) return;
+  if (isRepoBackfill) {
+    await admin.from("audit_history")
+      .update({ repo_url_status: "repo_backfill_failed" })
+      .eq("id", rowId);
+    return;
+  }
+  await admin.from("audit_history")
+    .update({ findings_extraction_status: status, findings_extracted_at: new Date().toISOString() })
+    .eq("id", rowId);
+}
+
 async function processOne(admin: any, anthropicKey: string | null, firecrawlKey: string | null, row: any, dryRun: boolean, isRepoBackfill: boolean) {
+  if (isNonReportListing(row.report_url)) {
+    if (!dryRun) await admin.from("audit_history").update({ findings_extraction_status: "no_report_on_page", findings_extracted_at: new Date().toISOString() }).eq("id", row.id);
+    return { kind: "no_report_on_page" as const };
+  }
   const fetched = await fetchAny(row.report_url, firecrawlKey);
-  if ("error" in fetched) { if ((fetched as any).rateLimited) { if (!dryRun) await admin.from("audit_history").update({ findings_extraction_status: null, findings_extracted_at: null }).eq("id", row.id); return { kind: "rate_limited" as const }; } if (!dryRun) await admin.from("audit_history").update({ findings_extraction_status: isRepoBackfill ? "extracted" : `fetch_failed:${fetched.error.slice(0, 60)}`, findings_extracted_at: new Date().toISOString() }).eq("id", row.id); return { kind: "fetch_error" as const, error: fetched.error }; }
-  let parsed: any; try { parsed = await extractWithAnthropic(anthropicKey!, fetched.text); } catch (e) { const errStr = String(e); if (/Anthropic (429|529)/.test(errStr)) { if (!dryRun) await admin.from("audit_history").update({ findings_extraction_status: null, findings_extracted_at: null }).eq("id", row.id); return { kind: "rate_limited" as const }; } if (!dryRun) await admin.from("audit_history").update({ findings_extraction_status: isRepoBackfill ? "extracted" : `llm_failed:${errStr.slice(0, 350)}`, findings_extracted_at: new Date().toISOString() }).eq("id", row.id); return { kind: "parse_error" as const, error: errStr.slice(0, 200) }; }
-  if (!parsed) { if (!dryRun) await admin.from("audit_history").update({ findings_extraction_status: isRepoBackfill ? "extracted" : "json_parse_failed", findings_extracted_at: new Date().toISOString() }).eq("id", row.id); return { kind: "parse_error" as const, error: "json_parse_failed" }; }
-  if (parsed.ai_summary === "NOT_AN_AUDIT_REPORT") { if (!dryRun) await admin.from("audit_history").update({ findings_extraction_status: isRepoBackfill ? "extracted" : "not_audit_report", findings_extracted_at: new Date().toISOString() }).eq("id", row.id); return { kind: "not_audit" as const }; }
+  if ("error" in fetched) { if ((fetched as any).rateLimited || isTransientOutage(String((fetched as any).error ?? ""))) { if (!dryRun && !isRepoBackfill) await admin.from("audit_history").update({ findings_extraction_status: null, findings_extracted_at: null }).eq("id", row.id); return { kind: "rate_limited" as const }; } await recordFailure(admin, row.id, isRepoBackfill, `fetch_failed:${fetched.error.slice(0, 60)}`, dryRun); return { kind: "fetch_error" as const, error: fetched.error }; }
+  let parsed: any; try { parsed = await extractWithAnthropic(anthropicKey!, fetched.text); } catch (e) { const errStr = String(e); if (isTransientOutage(errStr)) { if (!dryRun && !isRepoBackfill) await admin.from("audit_history").update({ findings_extraction_status: null, findings_extracted_at: null }).eq("id", row.id); return { kind: "rate_limited" as const }; } await recordFailure(admin, row.id, isRepoBackfill, `llm_failed:${errStr.slice(0, 350)}`, dryRun); return { kind: "parse_error" as const, error: errStr.slice(0, 200) }; }
+  if (!parsed) { await recordFailure(admin, row.id, isRepoBackfill, "json_parse_failed", dryRun); return { kind: "parse_error" as const, error: "json_parse_failed" }; }
+  if (parsed.ai_summary === "NOT_AN_AUDIT_REPORT") { await recordFailure(admin, row.id, isRepoBackfill, "not_audit_report", dryRun); return { kind: "not_audit" as const }; }
   let auditedFiles: string[] = []; if (Array.isArray(parsed.audited_files)) auditedFiles = parsed.audited_files.filter((f: any) => typeof f === "string" && f.length > 0 && f.length < 300).slice(0, 30);
   let auditedChains: string[] = []; if (Array.isArray(parsed.audited_chains)) auditedChains = parsed.audited_chains.filter((c: any) => typeof c === "string").map((c: string) => c.toLowerCase().trim()).filter(Boolean).slice(0, 10);
   const repoUrl = typeof parsed.audited_repo_url === "string" && /^https?:\/\//.test(parsed.audited_repo_url) ? parsed.audited_repo_url.slice(0, 500) : null;
@@ -179,7 +299,7 @@ Deno.serve(async (req) => {
   if (!rows || rows.length === 0) return json(200, { ok: true, scanned: 0, note: "no candidates" });
   let firmFiltered = rows;
   if (body.firm) firmFiltered = rows.filter((r: any) => r.audit_firm === body.firm);
-  let extracted = 0, fetchErrors = 0, parseErrors = 0, notAudits = 0, rateLimited = 0, criticalFound = 0, highFound = 0, repoCount = 0, dateCount = 0;
+  let extracted = 0, fetchErrors = 0, parseErrors = 0, notAudits = 0, rateLimited = 0, criticalFound = 0, highFound = 0, repoCount = 0, dateCount = 0, noReportPages = 0;
   const sourceCounts: Record<string, number> = {};
   for (let i = 0; i < firmFiltered.length; i += parallelism) {
     const batch = firmFiltered.slice(i, i + parallelism);
@@ -190,7 +310,8 @@ Deno.serve(async (req) => {
       else if (r.kind === "parse_error") parseErrors++;
       else if (r.kind === "not_audit") notAudits++;
       else if (r.kind === "rate_limited") rateLimited++;
+      else if (r.kind === "no_report_on_page") noReportPages++;
     }
   }
-  return json(200, { ok: true, scanned: firmFiltered.length, extracted, fetch_errors: fetchErrors, parse_errors: parseErrors, not_audits: notAudits, rate_limited: rateLimited, repos_captured: repoCount, dates_captured: dateCount, sources: sourceCounts, totals_found: { critical: criticalFound, high: highFound } });
+  return json(200, { ok: true, scanned: firmFiltered.length, extracted, fetch_errors: fetchErrors, parse_errors: parseErrors, not_audits: notAudits, rate_limited: rateLimited, no_report_pages: noReportPages, repos_captured: repoCount, dates_captured: dateCount, sources: sourceCounts, totals_found: { critical: criticalFound, high: highFound } });
 });

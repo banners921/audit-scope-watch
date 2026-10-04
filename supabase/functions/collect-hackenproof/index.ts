@@ -107,16 +107,19 @@ Deno.serve(async (req: Request) => {
     if (matched_samples.length < 10) matched_samples.push({ hp: p.slug, slug: match.slug });
     if (debug) continue;
     if (source === "programs") {
-      const row = { protocol_slug: match.slug, company_slug: match.slug, platform: CANONICAL, program_url: p.url, is_active: true, last_updated: new Date().toISOString() };
+      // Trailing slashes are stripped so the same program cannot be stored
+      // twice under two URL spellings.
+      const programUrl = p.url.replace(/\/+$/, "");
+      const row = { protocol_slug: match.slug, company_slug: match.slug, platform: CANONICAL, program_url: programUrl, is_active: true, last_updated: new Date().toISOString() };
       const { data: existing } = await admin.from("bug_bounties").select("id").eq("company_slug", match.slug).eq("platform", CANONICAL).limit(1);
       if (existing && existing.length > 0) {
         if (!(await admin.from("bug_bounties").update(row).eq("id", existing[0].id)).error) updated++;
       } else if (!(await admin.from("bug_bounties").insert(row)).error) inserted++;
       await admin.from("companies").update({ has_bug_bounty: true }).eq("slug", match.slug).or("has_bug_bounty.is.null,has_bug_bounty.eq.false");
     } else {
-      const { data: dup } = await admin.from("audit_history").select("id").eq("company_slug", match.slug).eq("audit_firm", CANONICAL).eq("report_url", p.url).limit(1);
+      const { data: dup } = await admin.from("audit_history").select("id").eq("company_slug", match.slug).eq("audit_firm", CANONICAL).eq("report_url", programUrl).limit(1);
       if (dup && dup.length > 0) continue;
-      if (!(await admin.from("audit_history").insert({ company_slug: match.slug, protocol_name: match.name, audit_firm: CANONICAL, audit_date: new Date().toISOString().slice(0, 10), report_url: p.url, data_source: "hackenproof_audit_programs" })).error) inserted++;
+      if (!(await admin.from("audit_history").insert({ company_slug: match.slug, protocol_name: match.name, audit_firm: CANONICAL, audit_date: new Date().toISOString().slice(0, 10), report_url: programUrl, data_source: "hackenproof_audit_programs" })).error) inserted++;
     }
   }
   return json(200, { ok: true, source, discovered: programs.length, matched, inserted, updated, unmatched, matched_samples, unmatched_samples });
