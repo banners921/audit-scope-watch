@@ -78,9 +78,9 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/docs" element={<Docs />} />
-            <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+            <Route path="/account" element={<ProtectedRoute allowUnpaid><Account /></ProtectedRoute>} />
             <Route path="/home" element={<ProtectedRoute><HomeRedirect /></ProtectedRoute>} />
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            <Route path="/onboarding" element={<ProtectedRoute allowUnpaid><Onboarding /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />
             {/* Companies + auditors browse pages */}
@@ -135,7 +135,7 @@ const App = () => (
             <Route path="/portfolio-analytics" element={<ProtectedRoute><PortfolioAnalytics /></ProtectedRoute>} />
             <Route path="/lp-report" element={<ProtectedRoute><LPReport /></ProtectedRoute>} />
             <Route path="/fund-reports" element={<ProtectedRoute><FundReports /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute allowUnpaid><Profile /></ProtectedRoute>} />
             <Route path="/stover" element={<ProtectedRoute><Stover /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -13,23 +13,15 @@ export default function Landing() {
   const { user } = useAuth();
 
   const statsQ = useQuery({
-    queryKey: ["landing-stats-v3"],
+    queryKey: ["landing-stats-v4"],
     refetchInterval: 60_000,
+    // Data tables are subscriber-only; the homepage reads counts from a public function.
     queryFn: async () => {
-      const [audits, findings, auditors, companies, funding, hacks, onchain, audits24h] = await Promise.all([
-        supabase.from("audit_history").select("id", { count: "exact", head: true }),
-        supabase.from("audit_findings_detail").select("id", { count: "exact", head: true }),
-        supabase.from("audit_firm_meta").select("firm_name", { count: "exact", head: true }),
-        supabase.from("companies").select("slug", { count: "exact", head: true }),
-        supabase.from("funding_rounds").select("id", { count: "exact", head: true }),
-        supabase.from("hacks").select("id", { count: "exact", head: true }),
-        supabase.from("chain_addresses").select("id", { count: "exact", head: true }),
-        supabase.from("audit_history").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 24 * 3600000).toISOString()),
-      ]);
-      return {
-        audits: audits.count ?? 0, findings: findings.count ?? 0, auditors: auditors.count ?? 0,
-        companies: companies.count ?? 0, funding: funding.count ?? 0, hacks: hacks.count ?? 0,
-        onchain: onchain.count ?? 0, audits24h: audits24h.count ?? 0,
+      const { data, error } = await supabase.rpc("public_landing_stats");
+      if (error) throw error;
+      return data as {
+        audits: number; findings: number; auditors: number; companies: number;
+        funding: number; hacks: number; onchain: number; audits24h: number;
       };
     },
   });
@@ -37,7 +29,7 @@ export default function Landing() {
   const n = (x?: number) => (x == null ? "—" : x.toLocaleString());
 
   const primaryHref = user ? "/radar" : "/signup";
-  const primaryLabel = user ? "Open app" : "Start free";
+  const primaryLabel = user ? "Open app" : "Start 7-day free trial";
 
   const CARDS = [
     { icon: <ShieldCheck className="w-5 h-5" />, title: "Audits", stat: n(s?.audits), sub: "Every report, severity-scored" },
@@ -137,7 +129,7 @@ export default function Landing() {
             </div>
           ))}
         </div>
-        <div className="text-center text-[11.5px] text-muted-foreground mt-5">Sign up free to explore every module.</div>
+        <div className="text-center text-[11.5px] text-muted-foreground mt-5">Start a 7-day free trial to explore every module.</div>
       </section>
 
       {/* API + Alerts */}
@@ -167,9 +159,9 @@ export default function Landing() {
       {/* Upsell */}
       <section className="max-w-[1100px] mx-auto px-4 lg:px-6 pb-24">
         <div className="as-card p-8 md:p-10 text-center space-y-4">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Start free. Upgrade when it pays for itself.</h2>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Try it free for 7 days. Keep it when it pays for itself.</h2>
           <p className="text-[13.5px] text-muted-foreground max-w-[560px] mx-auto">
-One plan — $59/mo unlocks the full platform, the API, and alerts.
+One plan — $79/mo unlocks the full platform, the API, and alerts. 7-day free trial.
           </p>
           <div className="flex flex-wrap gap-2 justify-center pt-1">
             <Link to={primaryHref} className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">

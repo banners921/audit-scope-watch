@@ -13,20 +13,19 @@ const EVERYTHING_FEATURES = [
 ];
 
 const FREE_FEATURES = [
-  "Browse audits, auditors, companies, funding & hacks",
-  "Search the 21K+ audit archive",
-  "Finding counts + severity breakdown",
+  "Free account",
+  "Preview of the latest audits + dataset totals",
   "Trial API key (recent window, capped rows)",
 ];
 
 const FAQS = [
-  { q: "Is there a free tier?", a: "Yes. Sign up free to browse the platform and try a trial API key (recent window, capped). Everything ($59/mo) unlocks the full platform, the complete archive with report URLs, the full API, and alerts." },
-  { q: "What do I get for $59?", a: "Everything — the full web app, the complete 21K+ audit archive with report URLs, the full REST API, and signal alerts. One plan, no add-ons." },
+  { q: "Is there a free tier?", a: "A free account shows a preview of the latest audits and a capped trial API key. The platform itself is for subscribers: $79/mo, with a 7-day free trial." },
+  { q: "What do I get for $79?", a: "Everything — the full web app, the complete audit archive with report URLs, the full REST API, and signal alerts. One plan, no add-ons." },
   { q: "Where does the data come from?", a: "We crawl per-firm GitHub repos (50+ audit firms), protocol docs (Mintlify/GitBook), DefiLlama, web3leads, RootData, Solodit, Immunefi, HackenProof. Every record cites its sources." },
   { q: "How fresh is it?", a: "Audit firm GitHub repos polled every 30 min. Per-protocol /audits folders hourly. New audits visible within ~5 minutes of GitHub publish. Hacks every 4h. Funding rounds every 15 min." },
   { q: "What's your data accuracy policy?", a: "If we don't have a value, the API returns null — never a guess. Dead projects are flagged. Audit dates come from PDF metadata or filenames, not inferred." },
   { q: "Can I cancel anytime?", a: "Yes. No long-term contracts on Pro. You can export your entire dataset as JSON or CSV before canceling." },
-  { q: "Do you offer a trial?", a: "Pro includes a 14-day trial. Enterprise gets a 30-day pilot with an engineer in your Slack." },
+  { q: "Do you offer a trial?", a: "Yes — 7 days free for first-time subscribers. A card is required; cancel any time before the trial ends and you won't be charged." },
   { q: "What if I need more than 100K calls?", a: "Talk to us. Most teams stay well under it — webhooks mean you don't have to poll. If you're genuinely doing high volume, that's Enterprise territory and we'll quote it." },
 ];
 
@@ -43,7 +42,7 @@ export default function Pricing() {
           <div className="text-[10px] uppercase tracking-[0.18em] text-primary font-semibold">Pricing</div>
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">Simple, honest pricing.</h1>
           <p className="text-muted-foreground text-[14.5px] leading-relaxed max-w-[600px] mx-auto">
-            Start free. Unlock everything — full platform, API and alerts — for <span className="text-foreground font-semibold">$59/mo</span>. One plan, no add-ons.
+            Unlock everything — full platform, API and alerts — for <span className="text-foreground font-semibold">$79/mo</span>. 7-day free trial. One plan, no add-ons.
           </p>
         </div>
 
@@ -57,7 +56,7 @@ export default function Pricing() {
                 <span className="text-4xl font-semibold text-foreground tabular-nums">$0</span>
                 <span className="text-[12.5px] text-muted-foreground">forever</span>
               </div>
-              <div className="text-[12.5px] text-muted-foreground mt-1.5">Try it before you pay.</div>
+              <div className="text-[12.5px] text-muted-foreground mt-1.5">A look before you start a trial.</div>
             </div>
             <ul className="space-y-2 text-[12.5px] flex-1">
               {FREE_FEATURES.map((f, i) => (
@@ -72,7 +71,7 @@ export default function Pricing() {
             </Link>
           </div>
 
-          {/* $59 Everything */}
+          {/* $79 Everything */}
           <div className="as-card p-6 flex flex-col gap-5 border-primary/40 shadow-[0_0_0_1px_rgba(34,211,238,0.25),0_0_40px_-12px_rgba(34,211,238,0.3)] bg-gradient-to-br from-primary/[0.05] to-transparent relative">
             <div className="absolute -top-2.5 left-6 px-2 py-0.5 rounded bg-primary text-primary-foreground text-[9.5px] uppercase tracking-[0.16em] font-bold">Everything</div>
             <div>
@@ -80,7 +79,7 @@ export default function Pricing() {
                 <Crown className="w-3 h-3" /> Full access
               </div>
               <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-5xl font-semibold text-foreground tabular-nums">$59</span>
+                <span className="text-5xl font-semibold text-foreground tabular-nums">$79</span>
                 <span className="text-[13px] text-muted-foreground">/mo</span>
               </div>
               <div className="text-[12.5px] text-muted-foreground mt-1.5">Full platform + API + alerts. One plan.</div>
@@ -95,14 +94,14 @@ export default function Pricing() {
             </ul>
             {user ? (
               <button onClick={startCheckout} className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
-                Upgrade — $59/mo <ArrowRight className="w-4 h-4" />
+                Start 7-day free trial <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
               <Link to="/signup" className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
-                Start free <ArrowRight className="w-4 h-4" />
+                Start 7-day free trial <ArrowRight className="w-4 h-4" />
               </Link>
             )}
-            <div className="text-[11px] text-muted-foreground text-center -mt-1">No credit card to start. Cancel anytime.</div>
+            <div className="text-[11px] text-muted-foreground text-center -mt-1">7 days free, then $79/mo. Card required. Cancel anytime.</div>
           </div>
         </div>
 
@@ -159,7 +158,7 @@ export default function Pricing() {
         <div className="mt-20 text-center as-card p-10">
           <h2 className="text-2xl font-semibold tracking-tight">Stop sourcing audits in Excel.</h2>
           <p className="text-muted-foreground text-[13px] mt-2 max-w-[520px] mx-auto">
-            14-day trial. No card. If the API doesn't replace at least one analyst-day per week, don't pay us.
+            7-day free trial. If the API doesn't replace at least one analyst-day per week, cancel before it ends.
           </p>
           <div className="flex items-center justify-center gap-2 mt-5">
             <Link to={user ? "/account" : "/signup"} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">

@@ -19,7 +19,7 @@ async function post(bodyObj: Record<string, unknown>, failMsg: string): Promise<
   }
 }
 
-/** Starts Stripe Checkout for the $59/mo plan. Redirects to Stripe on success. */
+/** Starts Stripe Checkout for the $79/mo plan (7-day trial for first-time subscribers). Redirects to Stripe on success. */
 export function startCheckout(): Promise<void> {
   return post({}, "Could not start checkout. Please try again.");
 }

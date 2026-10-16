@@ -4,7 +4,31 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 function j(p: unknown, status = 200) { return new Response(JSON.stringify(p), { status, headers: { ...CORS, 'Content-Type': 'application/json' } }); }
 
-const PRICE_ID = Deno.env.get('STRIPE_PRICE_ID') || 'price_1TyJ63Fs6CJPqHkUxFIOo1kW';
+// The $79/mo plan price, found by lookup key. Created on first use on the same
+// product as the original $59 price (STRIPE_PRICE_ID), so no price id has to be
+// copied into secrets by hand.
+const PRICE_LOOKUP_KEY = 'auditscope_pro_monthly_79';
+const PRICE_CENTS = 7900;
+const LEGACY_PRICE_ID = Deno.env.get('STRIPE_PRICE_ID') || 'price_1TyJ63Fs6CJPqHkUxFIOo1kW';
+const TRIAL_DAYS = 7;
+let cachedPriceId: string | null = null;
+
+async function planPriceId(stripe: Stripe): Promise<string> {
+  if (cachedPriceId) return cachedPriceId;
+  const found = await stripe.prices.list({ lookup_keys: [PRICE_LOOKUP_KEY], active: true, limit: 1 });
+  if (found.data[0]) return (cachedPriceId = found.data[0].id);
+  const legacy = await stripe.prices.retrieve(LEGACY_PRICE_ID);
+  const product = typeof legacy.product === 'string' ? legacy.product : legacy.product.id;
+  const created = await stripe.prices.create({
+    product,
+    currency: 'usd',
+    unit_amount: PRICE_CENTS,
+    recurring: { interval: 'month' },
+    lookup_key: PRICE_LOOKUP_KEY,
+    nickname: 'AuditScope Pro $79/mo',
+  });
+  return (cachedPriceId = created.id);
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
@@ -44,22 +68,27 @@ Deno.serve(async (req) => {
     }
   }
 
-  // --- Checkout (upgrade to $59/mo) ---
+  // --- Checkout ($79/mo, 7-day trial for first-time subscribers) ---
   if (!customerId) {
     const customer = await stripe.customers.create({ email: user.email ?? undefined, metadata: { user_id: user.id } });
     customerId = customer.id;
     await svc.from('user_profiles').upsert({ user_id: user.id, stripe_customer_id: customerId }, { onConflict: 'user_id' });
   }
   try {
+    const priceId = await planPriceId(stripe);
+    // One trial per customer: anyone who has ever had a subscription pays from day one.
+    const prior = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 1 });
+    const trial = prior.data.length === 0;
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
-      line_items: [{ price: PRICE_ID, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
+      payment_method_collection: 'always',
       success_url: `${origin}/account?upgraded=1`,
       cancel_url: `${origin}/pricing`,
       client_reference_id: user.id,
       metadata: { user_id: user.id },
-      subscription_data: { metadata: { user_id: user.id } },
+      subscription_data: { metadata: { user_id: user.id }, ...(trial ? { trial_period_days: TRIAL_DAYS } : {}) },
       allow_promotion_codes: true,
     });
     return j({ url: session.url });

@@ -36,10 +36,15 @@ Deno.serve(async (req) => {
       case 'checkout.session.completed': {
         const s = event.data.object as Stripe.Checkout.Session;
         const userId = (s.client_reference_id || (s.metadata?.user_id as string)) ?? null;
+        // Record the real status: a new subscriber on the free trial is 'trialing', not 'active'.
+        let status = 'active';
+        if (s.subscription) {
+          try { status = (await stripe.subscriptions.retrieve(s.subscription as string)).status; } catch { /* keep 'active' */ }
+        }
         if (userId) await setFull(userId, {
           stripe_customer_id: (s.customer as string) ?? null,
           stripe_subscription_id: (s.subscription as string) ?? null,
-          subscription_status: 'active',
+          subscription_status: status,
         });
         break;
       }

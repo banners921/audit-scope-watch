@@ -46,12 +46,9 @@ export default function Onboarding() {
     queryKey: ["onboarding-funds", fundQuery],
     enabled: mode === "fund" && fundQuery.length >= 2,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("funds")
-        .select("slug,name,investment_count")
-        .ilike("name", `%${fundQuery}%`)
-        .order("investment_count", { ascending: false, nullsFirst: false })
-        .limit(10);
+      // Fund names only: onboarding runs before the user subscribes, and the
+      // funds table itself is subscriber-only.
+      const { data } = await supabase.rpc("search_funds_public", { p_q: fundQuery });
       return (data ?? []) as Array<{ slug: string; name: string; investment_count: number | null }>;
     },
   });

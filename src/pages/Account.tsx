@@ -128,7 +128,7 @@ export default function Account() {
           <div>
             {tier === "free" ? (
               <button onClick={startCheckout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
-                Upgrade — $59/mo <ArrowRight className="w-3.5 h-3.5" />
+                Start free trial — $79/mo <ArrowRight className="w-3.5 h-3.5" />
               </button>
             ) : (
               <button onClick={openBillingPortal} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] text-[12.5px] font-semibold hover:bg-white/[0.04]">
@@ -169,7 +169,7 @@ export default function Account() {
             </div>
             <div className="text-right shrink-0">
               <button onClick={startCheckout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90">
-                Upgrade — $59/mo <ArrowRight className="w-3.5 h-3.5" />
+                Start free trial — $79/mo <ArrowRight className="w-3.5 h-3.5" />
               </button>
               <div className="text-[10px] text-muted-foreground mt-1.5">Full history · report links · higher limits</div>
             </div>
@@ -326,7 +326,7 @@ function NotificationCard({ tier, profile }: { tier: PlanTier; profile: any }) {
             Pipe new audits, hacks, funding rounds, and news for your watched protocols directly to Telegram. Slack coming soon.
           </p>
           <button onClick={startCheckout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
-            Unlock everything — $59/mo <ArrowRight className="w-3.5 h-3.5" />
+            Start free trial — $79/mo <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </section>
