@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 
-// Whether the signed-in user can read the data: an active or trialing
+// Whether the signed-in user can read the data: an active paid
 // subscription (plan_tier 'pro', set by stripe-webhook) or an admin. The same
 // has_paid_access() check gates every data table in the database, so this only
 // decides what to render — it is not the security boundary.

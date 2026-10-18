@@ -30,7 +30,7 @@ export function SiteNav({ current }: { current?: "pricing" | "docs" }) {
             <>
               <Link to="/login" className="inline-flex items-center min-h-[44px] px-3 text-[13px] text-muted-foreground hover:text-foreground rounded-md">Sign in</Link>
               <Link to="/signup" className="inline-flex items-center gap-1 min-h-[44px] px-3.5 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">
-                Free trial <ArrowRight className="w-3.5 h-3.5" aria-hidden />
+                Get started <ArrowRight className="w-3.5 h-3.5" aria-hidden />
               </Link>
             </>
           )}

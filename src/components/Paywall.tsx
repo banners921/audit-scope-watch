@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, Lock, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { startCheckout } from "@/lib/checkout";
+import { startCheckout, type BillingInterval } from "@/lib/checkout";
 
 type Preview = {
   stats: { audits: number; findings: number; auditors: number; companies: number; funding: number; hacks: number };
@@ -20,7 +20,7 @@ const INCLUDED = [
 // The preview comes from paywall_preview(): counts plus the newest audits'
 // project, firm and date; nothing else is readable until they subscribe.
 export function Paywall() {
-  const [starting, setStarting] = useState(false);
+  const [starting, setStarting] = useState<BillingInterval | null>(null);
   const previewQ = useQuery({
     queryKey: ["paywall-preview"],
     staleTime: 5 * 60_000,
@@ -33,10 +33,10 @@ export function Paywall() {
   const p = previewQ.data;
   const n = (x?: number) => (x == null ? "…" : x.toLocaleString());
 
-  const start = async () => {
-    setStarting(true);
-    await startCheckout();
-    setStarting(false);
+  const start = async (interval: BillingInterval) => {
+    setStarting(interval);
+    await startCheckout(interval);
+    setStarting(null);
   };
 
   return (
@@ -47,7 +47,7 @@ export function Paywall() {
         </div>
         <h1 className="text-2xl font-semibold text-foreground tracking-tight mt-1.5">Unlock the full AuditScope dataset</h1>
         <p className="text-[13px] text-muted-foreground mt-2 max-w-[560px]">
-          Start a 7-day free trial, then $79/month. Card required; cancel any time before the trial ends and you won't be charged.
+          Subscribe for $99 a month, or $990 a year (2 months free). Cancel any time.
         </p>
         <ul className="mt-4 space-y-1.5 text-[12.5px]">
           {INCLUDED.map((f) => (
@@ -57,13 +57,21 @@ export function Paywall() {
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={start}
-            disabled={starting}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90 disabled:opacity-60"
+            onClick={() => start("monthly")}
+            disabled={starting !== null}
+            className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90 disabled:opacity-60"
           >
-            {starting ? "Opening checkout…" : "Start 7-day free trial"} <ArrowRight className="w-4 h-4" />
+            {starting === "monthly" ? "Opening checkout…" : "Subscribe monthly: $99"} <ArrowRight className="w-4 h-4" />
           </button>
-          <span className="text-[11.5px] text-muted-foreground">Then $79/mo · the trial is for first-time subscribers</span>
+          <button
+            type="button"
+            onClick={() => start("annual")}
+            disabled={starting !== null}
+            className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-md border border-primary/40 text-foreground text-[13px] font-semibold hover:bg-primary/[0.08] disabled:opacity-60"
+          >
+            {starting === "annual" ? "Opening checkout…" : "Subscribe yearly: $990"}
+            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">2 months free</span>
+          </button>
         </div>
       </section>
 

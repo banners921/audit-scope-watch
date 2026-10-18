@@ -13,7 +13,7 @@ export default function Docs() {
   const copy = (s: string) => { navigator.clipboard.writeText(s); toast.success("Copied"); };
   usePageMeta(
     "API docs: AuditScope",
-    "AuditScope REST API: pull crypto security audits, hacks and funding rounds into your own tools as JSON. One API key, trial keys for free accounts.",
+    "AuditScope REST API: pull crypto security audits, hacks and funding rounds into your own tools as JSON. One API key; free accounts get a limited key.",
     "/docs",
   );
 
@@ -46,7 +46,7 @@ export default function Docs() {
             <h1 className="text-4xl font-semibold tracking-tight">AuditScope.ai REST API</h1>
             <p className="text-muted-foreground text-[14px] leading-relaxed">
               Pull AuditScope's data into your own spreadsheets, dashboards or risk models: security audits of crypto projects, past hacks, and funding rounds.
-              Responses are JSON over HTTPS, paginated, and updated continuously. Three endpoints, one API key. Free accounts get a trial key; the full key comes with the $79/month plan.
+              Responses are JSON over HTTPS, paginated, and updated continuously. Three endpoints, one API key. Free accounts get a limited key; full access comes with the paid plan ($99/month or $990/year).
             </p>
             <div className="as-card p-4 font-mono text-[12px] flex items-center gap-2">
               <span className="text-primary shrink-0">Base URL</span>
@@ -243,8 +243,8 @@ curl '${BASE_URL}/audits?limit=10' \\
                   <th className="px-3 py-2 text-right">Monthly cap</th>
                 </tr></thead>
                 <tbody>
-                  <tr className="border-b border-white/[0.04]"><td className="px-3 py-2">Trial (free)</td><td className="px-3 py-2 text-right tabular-nums">60</td><td className="px-3 py-2 text-right tabular-nums">5,000</td></tr>
-                  <tr className="border-b border-white/[0.04]"><td className="px-3 py-2 text-primary">Full · $79/mo</td><td className="px-3 py-2 text-right tabular-nums">1,200</td><td className="px-3 py-2 text-right tabular-nums">100,000</td></tr>
+                  <tr className="border-b border-white/[0.04]"><td className="px-3 py-2">Free account</td><td className="px-3 py-2 text-right tabular-nums">60</td><td className="px-3 py-2 text-right tabular-nums">5,000</td></tr>
+                  <tr className="border-b border-white/[0.04]"><td className="px-3 py-2 text-primary">Paid · $99/mo or $990/yr</td><td className="px-3 py-2 text-right tabular-nums">1,200</td><td className="px-3 py-2 text-right tabular-nums">100,000</td></tr>
                   <tr><td className="px-3 py-2 text-emerald-300">Enterprise</td><td className="px-3 py-2 text-right tabular-nums">6,000</td><td className="px-3 py-2 text-right tabular-nums">Unlimited</td></tr>
                 </tbody>
               </table>

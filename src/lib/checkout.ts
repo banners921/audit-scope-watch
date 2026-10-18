@@ -19,9 +19,13 @@ async function post(bodyObj: Record<string, unknown>, failMsg: string): Promise<
   }
 }
 
-/** Starts Stripe Checkout for the $79/mo plan (7-day trial for first-time subscribers). Redirects to Stripe on success. */
-export function startCheckout(): Promise<void> {
-  return post({}, "Could not start checkout. Please try again.");
+export type BillingInterval = "monthly" | "annual";
+
+/** Starts Stripe Checkout: $99/month or $990/year, no trial. Redirects to Stripe on success.
+ *  Anything other than "annual" (including a click event) means monthly. */
+export function startCheckout(interval?: unknown): Promise<void> {
+  const i: BillingInterval = interval === "annual" ? "annual" : "monthly";
+  return post({ interval: i }, "Could not start checkout. Please try again.");
 }
 
 /** Opens the Stripe billing portal (cancel, change card, invoices). */

@@ -16,7 +16,7 @@ export function SiteFooter() {
           <Link to="/docs" className={linkCls}>API docs</Link>
           <a href="https://t.me/web3leads" target="_blank" rel="noopener noreferrer" className={linkCls}>Contact (Telegram)</a>
           <Link to="/login" className={linkCls}>Sign in</Link>
-          <Link to="/signup" className={linkCls}>Start free trial</Link>
+          <Link to="/signup" className={linkCls}>Create free account</Link>
         </nav>
       </div>
     </footer>

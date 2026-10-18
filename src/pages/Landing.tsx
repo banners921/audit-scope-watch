@@ -15,7 +15,7 @@ import { LatestAuditsPreview } from "@/components/marketing/LatestAuditsPreview"
 import { Faq } from "@/components/marketing/Faq";
 import { PERSONAS } from "@/components/marketing/personas";
 
-const TRIAL_TERMS = "7 days free, then $79/month. Card required. Cancel before day 7 and you pay nothing.";
+const PLAN_TERMS = "$99/month, or $990/year with 2 months free. Cancel any time.";
 
 const FAQS = [
   {
@@ -31,8 +31,8 @@ const FAQS = [
     a: "We check audit firms' websites and GitHub every 30 minutes, project documentation every hour, and hack sources every 4 hours. The severity breakdown for a new audit is added after we read the report, so it can appear later than the audit itself.",
   },
   {
-    q: "Do I need a card for the trial?",
-    a: "Yes. The 7-day trial asks for a card so your access continues without a gap. Cancel before day 7 and you are not charged. Creating a free account to see the preview does not need a card.",
+    q: "Is there a free version?",
+    a: "A free account, with no card needed, shows the latest audits and the dataset totals. The full database, the full API and alerts need a paid plan: $99/month, or $990/year.",
   },
   {
     q: "Can I cancel?",
@@ -49,13 +49,13 @@ export default function Landing() {
   const { user } = useAuth();
   usePageMeta(
     "AuditScope: security audit data for crypto projects",
-    "Check any crypto project's security record: published audits, the issues they found, and past hacks, in one searchable database and API. 7-day free trial, then $79/month.",
+    "Check any crypto project's security record: published audits, the issues they found, and past hacks, in one searchable database and API. $99/month or $990/year.",
     "/",
   );
   const { data: s } = useLandingStats();
 
   const primaryHref = user ? "/radar" : "/signup";
-  const primaryLabel = user ? "Open app" : "Start 7-day free trial";
+  const primaryLabel = user ? "Open app" : "Get started";
 
   const CARDS = [
     { icon: ShieldCheck, title: "Audits", stat: n(s?.audits), sub: "See whether a project's code was independently reviewed, by which firm, and when." },
@@ -102,7 +102,7 @@ export default function Landing() {
               <Code2 className="w-4 h-4" aria-hidden /> Explore the API
             </Link>
           </div>
-          {!user && <p className="relative text-[12.5px] text-muted-foreground mt-3">{TRIAL_TERMS}</p>}
+          {!user && <p className="relative text-[12.5px] text-muted-foreground mt-3">Free account shows a preview, no card needed. Full access is $99/month or $990/year.</p>}
 
           <div className="relative flex flex-col items-center mt-10">
             <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -218,7 +218,7 @@ export default function Landing() {
             <h2 className="text-[17px] font-semibold text-foreground">API for your own tools</h2>
             <p className="text-[13.5px] text-muted-foreground leading-relaxed">
               Pull audits, hacks and funding rounds into your spreadsheets, dashboards or risk models as JSON.
-              Create a key on your account page; free accounts get a trial key.
+              Create a key on your account page; free accounts get a limited key.
             </p>
             <Link to="/docs" className="inline-flex items-center gap-1 min-h-[44px] text-[13.5px] text-primary font-semibold hover:underline rounded">
               Read the API docs <ArrowRight className="w-3.5 h-3.5" aria-hidden />
@@ -240,13 +240,13 @@ export default function Landing() {
           <div className="as-card p-6 md:p-10 grid md:grid-cols-[1fr_auto] gap-6 items-center border-primary/30 bg-gradient-to-br from-primary/[0.05] to-transparent">
             <div className="space-y-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-primary font-semibold">Pricing</div>
-              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">One plan: $79 a month</h2>
+              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">One plan: $99 a month, or $990 a year</h2>
               <ul className="space-y-1.5 text-[13.5px]">
                 {["The full web app and audit archive", "The API", "Signal alerts"].map((f) => (
                   <li key={f} className="flex items-start gap-2"><Check className="w-4 h-4 text-primary shrink-0 mt-0.5" aria-hidden />{f}</li>
                 ))}
               </ul>
-              <p className="text-[12.5px] text-muted-foreground">{TRIAL_TERMS}</p>
+              <p className="text-[12.5px] text-muted-foreground">{PLAN_TERMS}</p>
             </div>
             <div className="flex flex-col gap-2">
               <Link to={primaryHref} className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-5 rounded-md bg-primary text-primary-foreground text-[14px] font-semibold hover:bg-primary/90">
@@ -270,7 +270,7 @@ export default function Landing() {
           <div className="as-card p-8 md:p-10 text-center space-y-4">
             <Lock className="w-6 h-6 text-primary mx-auto" aria-hidden />
             <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Know the security record before you commit.</h2>
-            <p className="text-[13.5px] text-muted-foreground max-w-[520px] mx-auto">{TRIAL_TERMS}</p>
+            <p className="text-[13.5px] text-muted-foreground max-w-[520px] mx-auto">{PLAN_TERMS}</p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center pt-1">
               <Link to={primaryHref} className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-5 rounded-md bg-primary text-primary-foreground text-[14px] font-semibold hover:bg-primary/90">
                 {primaryLabel} <ArrowRight className="w-4 h-4" aria-hidden />

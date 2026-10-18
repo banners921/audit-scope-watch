@@ -10,7 +10,7 @@ async function setFull(userId: string, patch: Record<string, unknown>) {
   await svc.from('user_profiles').upsert({ user_id: userId, plan_tier: 'pro', ...patch }, { onConflict: 'user_id' });
   await svc.from('api_keys').update({ tier: 'pro' }).eq('user_id', userId).is('revoked_at', null);
 }
-async function setTrial(userId: string, patch: Record<string, unknown>) {
+async function setFree(userId: string, patch: Record<string, unknown>) {
   await svc.from('user_profiles').upsert({ user_id: userId, plan_tier: 'free', ...patch }, { onConflict: 'user_id' });
   await svc.from('api_keys').update({ tier: 'trial' }).eq('user_id', userId).is('revoked_at', null);
 }
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       case 'checkout.session.completed': {
         const s = event.data.object as Stripe.Checkout.Session;
         const userId = (s.client_reference_id || (s.metadata?.user_id as string)) ?? null;
-        // Record the real status: a new subscriber on the free trial is 'trialing', not 'active'.
+        // Record the subscription's real status rather than assuming 'active'.
         let status = 'active';
         if (s.subscription) {
           try { status = (await stripe.subscriptions.retrieve(s.subscription as string)).status; } catch { /* keep 'active' */ }
@@ -54,14 +54,14 @@ Deno.serve(async (req) => {
         if (userId) {
           const active = sub.status === 'active' || sub.status === 'trialing';
           const patch = { stripe_subscription_id: sub.id, subscription_status: sub.status };
-          if (active) await setFull(userId, patch); else await setTrial(userId, patch);
+          if (active) await setFull(userId, patch); else await setFree(userId, patch);
         }
         break;
       }
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
         const userId = (sub.metadata?.user_id as string) || await userIdFromCustomer(sub.customer as string);
-        if (userId) await setTrial(userId, { subscription_status: 'canceled' });
+        if (userId) await setFree(userId, { subscription_status: 'canceled' });
         break;
       }
     }

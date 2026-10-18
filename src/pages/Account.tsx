@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { KeyRound, Plus, Copy, Trash2, Crown, Zap, Building2, ArrowRight, Bell, Slack, Send, Loader2, Save, Activity } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { startCheckout, openBillingPortal } from "@/lib/checkout";
+import { openBillingPortal } from "@/lib/checkout";
 
 type PlanTier = "free" | "developer" | "pro" | "enterprise";
 
@@ -127,9 +127,9 @@ export default function Account() {
           </div>
           <div>
             {tier === "free" ? (
-              <button onClick={startCheckout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
-                Start free trial — $79/mo <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <Link to="/pricing" className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
+                Upgrade: $99/mo or $990/yr <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             ) : (
               <button onClick={openBillingPortal} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] text-[12.5px] font-semibold hover:bg-white/[0.04]">
                 Manage plan
@@ -153,12 +153,12 @@ export default function Account() {
           <span className="text-[10px] text-muted-foreground ml-1">used for the developer API</span>
         </div>
 
-        {/* Trial vs paid — make the limits + upgrade obvious */}
+        {/* Free vs paid: make the limits and the upgrade obvious */}
         <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3.5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0">
               <div className="text-[12.5px] font-semibold text-foreground inline-flex items-center gap-1.5">
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider font-bold">Trial</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider font-bold">Free</span>
                 New keys stream fresh audits as we catch them
               </div>
               <ul className="text-[11.5px] text-muted-foreground mt-2 space-y-1">
@@ -168,9 +168,9 @@ export default function Account() {
               </ul>
             </div>
             <div className="text-right shrink-0">
-              <button onClick={startCheckout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90">
-                Start free trial — $79/mo <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <Link to="/pricing" className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-md bg-primary text-primary-foreground text-[12px] font-semibold hover:bg-primary/90">
+                Upgrade: $99/mo or $990/yr <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
               <div className="text-[10px] text-muted-foreground mt-1.5">Full history · report links · higher limits</div>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function Account() {
                     {k.name}
                     <span className="text-[10px] text-muted-foreground font-mono">{k.key_prefix}…</span>
                     {(k.tier ?? "trial") === "trial" ? (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider font-bold">Trial</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider font-bold">Free</span>
                     ) : (
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 uppercase tracking-wider font-bold">Full</span>
                     )}
@@ -325,9 +325,9 @@ function NotificationCard({ tier, profile }: { tier: PlanTier; profile: any }) {
           <p className="text-[12.5px] text-muted-foreground max-w-[420px] mx-auto">
             Pipe new audits, hacks, funding rounds, and news for your watched protocols directly to Telegram and Slack.
           </p>
-          <button onClick={startCheckout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
-            Start free trial — $79/mo <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <Link to="/pricing" className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
+            Upgrade: $99/mo or $990/yr <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </section>
     );

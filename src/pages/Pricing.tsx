@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Crown, Building2, Code2, Bell, Database, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { startCheckout } from "@/lib/checkout";
+import { startCheckout, type BillingInterval } from "@/lib/checkout";
 import { useLandingStats, fmtCount as n } from "@/hooks/useLandingStats";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useForceDarkTheme } from "@/hooks/useTheme";
@@ -22,13 +23,13 @@ const EVERYTHING_FEATURES = [
 const FREE_FEATURES = [
   "Free account, no card needed",
   "Preview of the latest audits and dataset totals",
-  "Trial API key (60 calls a minute, 5,000 a month)",
+  "Limited API key (60 calls a minute, 5,000 a month)",
 ];
 
 const FAQS: FaqItem[] = [
-  { q: "Is there a free tier?", a: "A free account shows a preview of the latest audits and comes with a capped trial API key. The full database is for subscribers: $79/month after a 7-day free trial." },
-  { q: "What do I get for $79?", a: "Everything: the full web app, the complete audit archive with report links, the API, and signal alerts. One plan, no add-ons." },
-  { q: "Do I need a card for the trial?", a: "Yes. The 7-day trial is for first-time subscribers and asks for a card. Cancel before day 7 and you are not charged. A free account without a trial does not need a card." },
+  { q: "Is there a free tier?", a: "Yes. A free account, with no card needed, shows a preview of the latest audits and the dataset totals, and comes with a limited API key. The full database, the full API and alerts need a paid plan." },
+  { q: "What do I get when I pay?", a: "Everything: the full web app, the complete audit archive with report links, the full API, and signal alerts. One plan, no add-ons, billed monthly or yearly." },
+  { q: "How does yearly billing work?", a: "$990 a year, paid up front. That is the price of 10 months at $99, so you get 2 months free." },
   { q: "Where does the data come from?", a: "Public sources: reports published by audit firms on their websites and GitHub, project documentation, DefiLlama, Solodit, Immunefi, HackenProof, RootData and web3leads. Each audit links back to its original report." },
   { q: "How fresh is it?", a: "Audit firms' websites and GitHub are checked every 30 minutes, project documentation every hour, and hack sources every 4 hours. Severity breakdowns are added after we read each report, so they can appear later than the audit." },
   { q: "Can I cancel any time?", a: "Yes. Cancel from your account page. No contract; you keep access until the end of the period you paid for." },
@@ -38,10 +39,12 @@ const FAQS: FaqItem[] = [
 export default function Pricing() {
   useForceDarkTheme();
   const { user } = useAuth();
+  const [interval, setBillingInterval] = useState<BillingInterval>("monthly");
+  const annual = interval === "annual";
   const { data: s } = useLandingStats();
   usePageMeta(
     "Pricing: AuditScope",
-    "One plan: $79/month for the full crypto security audit database, the API and alerts. 7-day free trial for first-time subscribers, card required, cancel any time.",
+    "One plan: $99/month or $990/year for the full crypto security audit database, the API and alerts. Cancel any time.",
     "/pricing",
   );
 
@@ -55,11 +58,32 @@ export default function Pricing() {
           <div className="text-[10px] uppercase tracking-[0.18em] text-primary font-semibold">Pricing</div>
           <h1 className="text-[34px] sm:text-4xl md:text-5xl font-semibold tracking-tight">One plan. Everything included.</h1>
           <p className="text-muted-foreground text-[14.5px] leading-relaxed max-w-[600px] mx-auto">
-            The full web app, the API and alerts for <span className="text-foreground font-semibold">$79 a month</span>. Try it free for 7 days.
+            The full web app, the API and alerts for <span className="text-foreground font-semibold">$99 a month</span>, or <span className="text-foreground font-semibold">$990 a year</span> with 2 months free.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 mt-12 max-w-[820px] mx-auto">
+        {/* Billing interval toggle */}
+        <div className="flex justify-center mt-8">
+          <div role="radiogroup" aria-label="Billing period" className="inline-flex p-1 rounded-full border border-white/[0.10] bg-white/[0.02]">
+            {([["monthly", "Monthly"], ["annual", "Yearly"]] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={interval === v}
+                onClick={() => setBillingInterval(v)}
+                className={`inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full text-[13px] font-semibold transition-colors ${interval === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {label}
+                {v === "annual" && (
+                  <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold ${interval === v ? "bg-background/25 text-primary-foreground" : "bg-emerald-500/15 text-emerald-300"}`}>2 months free</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4 mt-8 max-w-[820px] mx-auto">
           {/* Free */}
           <div className="as-card p-6 flex flex-col gap-5">
             <div>
@@ -68,7 +92,7 @@ export default function Pricing() {
                 <span className="text-4xl font-semibold text-foreground tabular-nums">$0</span>
                 <span className="text-[12.5px] text-muted-foreground">forever</span>
               </div>
-              <div className="text-[12.5px] text-muted-foreground mt-1.5">A look before you start the trial.</div>
+              <div className="text-[12.5px] text-muted-foreground mt-1.5">A look before you subscribe.</div>
             </div>
             <ul className="space-y-2 text-[13px] flex-1">
               {FREE_FEATURES.map((f, i) => (
@@ -83,7 +107,7 @@ export default function Pricing() {
             </Link>
           </div>
 
-          {/* $79 Everything */}
+          {/* Paid: monthly or yearly */}
           <div className="as-card p-6 flex flex-col gap-5 border-primary/40 shadow-[0_0_0_1px_rgba(34,211,238,0.25),0_0_40px_-12px_rgba(34,211,238,0.3)] bg-gradient-to-br from-primary/[0.05] to-transparent relative">
             <div className="absolute -top-2.5 left-6 px-2 py-0.5 rounded bg-primary text-primary-foreground text-[9.5px] uppercase tracking-[0.16em] font-bold">Everything</div>
             <div>
@@ -91,10 +115,12 @@ export default function Pricing() {
                 <Crown className="w-3 h-3" /> Full access
               </div>
               <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-5xl font-semibold text-foreground tabular-nums">$79</span>
-                <span className="text-[13px] text-muted-foreground">/mo</span>
+                <span className="text-5xl font-semibold text-foreground tabular-nums">{annual ? "$990" : "$99"}</span>
+                <span className="text-[13px] text-muted-foreground">{annual ? "/year" : "/month"}</span>
               </div>
-              <div className="text-[12.5px] text-muted-foreground mt-1.5">Web app, API and alerts.</div>
+              <div className="text-[12.5px] text-muted-foreground mt-1.5">
+                {annual ? "Billed yearly. Works out to $82.50 a month: 2 months free." : "Billed monthly. Web app, API and alerts."}
+              </div>
             </div>
             <ul className="space-y-2 text-[13px] flex-1">
               {EVERYTHING_FEATURES.map((f, i) => (
@@ -105,15 +131,15 @@ export default function Pricing() {
               ))}
             </ul>
             {user ? (
-              <button onClick={startCheckout} className="inline-flex items-center justify-center gap-1.5 min-h-[48px] px-4 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
-                Start 7-day free trial <ArrowRight className="w-4 h-4" />
+              <button onClick={() => startCheckout(interval)} className="inline-flex items-center justify-center gap-1.5 min-h-[48px] px-4 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
+                {annual ? "Subscribe yearly: $990" : "Subscribe monthly: $99"} <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
               <Link to="/signup" className="inline-flex items-center justify-center gap-1.5 min-h-[48px] px-4 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
-                Start 7-day free trial <ArrowRight className="w-4 h-4" />
+                Create account to subscribe <ArrowRight className="w-4 h-4" />
               </Link>
             )}
-            <div className="text-[11px] text-muted-foreground text-center -mt-1">7 days free, then $79/month. Card required. Cancel before day 7 and you pay nothing.</div>
+            <div className="text-[11px] text-muted-foreground text-center -mt-1">Cancel any time from your account page.</div>
           </div>
         </div>
 
@@ -157,13 +183,13 @@ export default function Pricing() {
 
         {/* CTA */}
         <div className="mt-20 text-center as-card p-10">
-          <h2 className="text-2xl font-semibold tracking-tight">Try it on your next diligence request.</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Put it to work on your next diligence request.</h2>
           <p className="text-muted-foreground text-[13px] mt-2 max-w-[520px] mx-auto">
-            7 days free, then $79/month. Cancel before day 7 and you pay nothing.
+            $99/month, or $990/year with 2 months free. Cancel any time.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-5">
             <Link to={user ? "/account" : "/signup"} className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">
-              {user ? "Get API key" : "Start trial"} <ArrowRight className="w-4 h-4" />
+              {user ? "Go to your account" : "Get started"} <ArrowRight className="w-4 h-4" />
             </Link>
             <Link to="/docs" className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-md border border-white/[0.10] text-[13px] font-semibold hover:bg-white/[0.04]">
               Read the docs
