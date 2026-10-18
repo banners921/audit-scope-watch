@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminRoute } from "@/components/AdminRoute";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound.tsx";
@@ -110,7 +111,7 @@ const App = () => (
             <Route path="/smart-contracts" element={<ProtectedRoute><SmartContracts /></ProtectedRoute>} />
             <Route path="/audit-reports" element={<ProtectedRoute><AuditReports /></ProtectedRoute>} />
             <Route path="/audits/:id" element={<ProtectedRoute><AuditDetail /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+            <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             <Route path="/radar" element={<ProtectedRoute><Radar /></ProtectedRoute>} />
             <Route path="/research" element={<Navigate to="/companies" replace />} />
             <Route path="/protocols" element={<Navigate to="/companies" replace />} />

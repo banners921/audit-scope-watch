@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { supabase } from "@/lib/supabase";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useAuth } from "@/hooks/useAuth";
 
 const COLLAPSED_KEY = "as_sidebar_collapsed";
@@ -57,15 +58,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isAdminQ = useQuery({
-    queryKey: ["is-admin", user?.id],
-    enabled: !!user,
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data } = await supabase.from("user_profiles").select("is_admin").eq("user_id", user!.id).maybeSingle();
-      return !!data?.is_admin;
-    },
-  });
+  const isAdminQ = useIsAdmin();
 
   const dueCount = useQuery({
     queryKey: ["reminders-due-count", user?.id],

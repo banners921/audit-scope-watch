@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Navigate } from "react-router-dom";
 import { Users, Activity, KeyRound, Crown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import NotFound from "@/pages/NotFound";
 
 type Row = {
   user_id: string; email: string; plan_tier: string | null; subscription_status: string | null;
@@ -10,16 +10,9 @@ type Row = {
 };
 
 export default function Admin() {
-  const { user } = useAuth();
-
-  const meQ = useQuery({
-    queryKey: ["admin-me", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase.from("user_profiles").select("is_admin").eq("user_id", user!.id).maybeSingle();
-      return !!data?.is_admin;
-    },
-  });
+  // AdminRoute already gates this page; checked again here so the page never
+  // renders for a non-admin even if it is mounted some other way.
+  const meQ = useIsAdmin();
 
   const rowsQ = useQuery({
     queryKey: ["admin-overview"],
@@ -33,7 +26,7 @@ export default function Admin() {
   });
 
   if (meQ.isLoading) return <div className="p-10 text-center text-sm text-muted-foreground">Loading…</div>;
-  if (meQ.data !== true) return <Navigate to="/dashboard" replace />;
+  if (meQ.data !== true) return <NotFound />;
 
   const rows = rowsQ.data ?? [];
   const paying = rows.filter((r) => r.plan_tier && r.plan_tier !== "free").length;
