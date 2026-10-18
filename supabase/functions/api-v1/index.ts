@@ -57,10 +57,16 @@ async function checkRateLimit(api_key_id: string, limit: number) {
 }
 
 async function logUsage(api_key_id: string, user_id: string, endpoint: string, status_code: number, bytes: number, ms: number) {
-  await supa.from('api_usage').insert({
-    api_key_id, user_id, endpoint, status_code, bytes_returned: bytes, ms_elapsed: ms,
-  });
-  await supa.rpc('increment_api_key_count', { p_key_id: api_key_id }).catch(() => {});
+  // Awaited separately: one failing must not stop the other, and an error is
+  // logged instead of silently dropped (the counter RPC was missing for weeks).
+  const [ins, inc] = await Promise.all([
+    supa.from('api_usage').insert({
+      api_key_id, user_id, endpoint, status_code, bytes_returned: bytes, ms_elapsed: ms,
+    }),
+    supa.rpc('increment_api_key_count', { p_key_id: api_key_id }),
+  ]);
+  if (ins.error) console.error('api_usage insert failed', ins.error.message);
+  if (inc.error) console.error('increment_api_key_count failed', inc.error.message);
 }
 
 function parseIntSafe(v: string | null, def: number, max: number): number {
@@ -343,7 +349,9 @@ Deno.serve(async (req) => {
   const bytes = new TextEncoder().encode(payload).byteLength;
   const ms = Date.now() - started;
 
-  logUsage(key_row.id, key_row.user_id, cleanPath, result.status, bytes, ms).catch(() => {});
+  // Keep the worker alive until the usage write finishes, without delaying the response.
+  const usage = logUsage(key_row.id, key_row.user_id, cleanPath, result.status, bytes, ms).catch((e) => console.error('logUsage', e));
+  (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(usage);
 
   return new Response(payload, {
     status: result.status,

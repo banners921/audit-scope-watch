@@ -6,13 +6,20 @@ const cryptoProvider = Stripe.createSubtleCryptoProvider();
 const svc = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 const WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
 
+// Per-minute API limits by key tier (also set by create-api-key for new keys).
+const PRO_RATE = 1200;
+const FREE_RATE = 60;
+
 async function setFull(userId: string, patch: Record<string, unknown>) {
   await svc.from('user_profiles').upsert({ user_id: userId, plan_tier: 'pro', ...patch }, { onConflict: 'user_id' });
   await svc.from('api_keys').update({ tier: 'pro' }).eq('user_id', userId).is('revoked_at', null);
+  // Raise to the paid limit; never lower a key that was given more by hand.
+  await svc.from('api_keys').update({ rate_limit_per_min: PRO_RATE }).eq('user_id', userId).is('revoked_at', null)
+    .or(`rate_limit_per_min.is.null,rate_limit_per_min.lt.${PRO_RATE}`);
 }
 async function setFree(userId: string, patch: Record<string, unknown>) {
   await svc.from('user_profiles').upsert({ user_id: userId, plan_tier: 'free', ...patch }, { onConflict: 'user_id' });
-  await svc.from('api_keys').update({ tier: 'trial' }).eq('user_id', userId).is('revoked_at', null);
+  await svc.from('api_keys').update({ tier: 'trial', rate_limit_per_min: FREE_RATE }).eq('user_id', userId).is('revoked_at', null);
 }
 async function userIdFromCustomer(customerId: string): Promise<string | null> {
   const { data } = await svc.from('user_profiles').select('user_id').eq('stripe_customer_id', customerId).maybeSingle();
@@ -48,13 +55,19 @@ Deno.serve(async (req) => {
         });
         break;
       }
+      // 'created' covers subscriptions made by hand in the dashboard. It only ever
+      // upgrades: Stripe doesn't order events, so a checkout's 'created' (status
+      // 'incomplete') can arrive after checkout.session.completed and must not
+      // undo it. 'updated' follows the status both ways.
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription;
         const userId = (sub.metadata?.user_id as string) || await userIdFromCustomer(sub.customer as string);
         if (userId) {
           const active = sub.status === 'active' || sub.status === 'trialing';
           const patch = { stripe_subscription_id: sub.id, subscription_status: sub.status };
-          if (active) await setFull(userId, patch); else await setFree(userId, patch);
+          if (active) await setFull(userId, patch);
+          else if (event.type === 'customer.subscription.updated') await setFree(userId, patch);
         }
         break;
       }
