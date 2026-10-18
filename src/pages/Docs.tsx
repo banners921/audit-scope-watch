@@ -1,18 +1,26 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Copy, KeyRound, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { SiteNav } from "@/components/marketing/SiteNav";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
 
 const BASE_URL = "https://qktjbtmcjrwzmtqnszbq.supabase.co/functions/v1/api-v1/v1";
 
 export default function Docs() {
   const copy = (s: string) => { navigator.clipboard.writeText(s); toast.success("Copied"); };
+  usePageMeta(
+    "API docs: AuditScope",
+    "AuditScope REST API: pull crypto security audits, hacks and funding rounds into your own tools as JSON. One API key, trial keys for free accounts.",
+    "/docs",
+  );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <DocsNav />
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <SiteNav current="docs" />
 
-      <main className="max-w-[1100px] mx-auto px-4 lg:px-6 py-12 grid lg:grid-cols-[220px_1fr] gap-10">
-        <aside className="lg:sticky lg:top-20 lg:self-start space-y-1 text-[12.5px]">
+      <main className="max-w-[1100px] mx-auto px-4 lg:px-6 py-12 grid lg:grid-cols-[220px_minmax(0,1fr)] gap-10">
+        <nav aria-label="On this page" className="lg:sticky lg:top-20 lg:self-start flex flex-wrap lg:block gap-1 lg:space-y-1 text-[13px]">
           {[
             { id: "overview", label: "Overview" },
             { id: "auth", label: "Authentication" },
@@ -24,23 +32,24 @@ export default function Docs() {
             { id: "errors", label: "Errors" },
             { id: "roadmap", label: "Roadmap" },
           ].map((s) => (
-            <a key={s.id} href={`#${s.id}`} className="block px-2 py-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.03]">
+            <a key={s.id} href={`#${s.id}`} className="inline-flex lg:flex items-center min-h-[44px] px-2 rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.03]">
               {s.label}
             </a>
           ))}
-        </aside>
+        </nav>
 
-        <div className="space-y-16">
+        <div className="space-y-16 min-w-0">
           <section id="overview" className="space-y-3">
             <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-primary">API Reference · v1</div>
             <h1 className="text-4xl font-semibold tracking-tight">AuditScope.ai REST API</h1>
             <p className="text-muted-foreground text-[14px] leading-relaxed">
-              Live audit + hack + funding data for crypto protocols. JSON over HTTPS, cursor-paginated, refreshed continuously. Three endpoints, one API key.
+              Pull AuditScope's data into your own spreadsheets, dashboards or risk models: security audits of crypto projects, past hacks, and funding rounds.
+              Responses are JSON over HTTPS, paginated, and updated continuously. Three endpoints, one API key. Free accounts get a trial key; the full key comes with the $79/month plan.
             </p>
             <div className="as-card p-4 font-mono text-[12px] flex items-center gap-2">
               <span className="text-primary shrink-0">Base URL</span>
               <code className="text-foreground truncate">{BASE_URL}</code>
-              <button onClick={() => copy(BASE_URL)} className="ml-auto text-muted-foreground hover:text-foreground shrink-0">
+              <button onClick={() => copy(BASE_URL)} aria-label="Copy base URL" className="ml-auto p-[15px] -m-[15px] text-muted-foreground hover:text-foreground shrink-0 rounded">
                 <Copy className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -73,7 +82,7 @@ curl '${BASE_URL}/audits?limit=10' \\
               { name: "since", type: "date (YYYY-MM-DD)", desc: "Filter audit_date >= since" },
               { name: "chain", type: "string", desc: 'e.g. "Ethereum", "Solana", "Arbitrum"' },
               { name: "limit", type: "int (1–200)", desc: "default 50" },
-              { name: "repo", type: "string", desc: 'GitHub repo — "github.com/org/repo", a full URL, or bare "org/repo". Switches to codebase-level lookup; see below.' },
+              { name: "repo", type: "string", desc: 'GitHub repo: "github.com/org/repo", a full URL, or bare "org/repo". Switches to codebase-level lookup; see below.' },
               { name: "cursor", type: "string", desc: "Pass next_cursor from prior response" },
             ]}
             example={`curl '${BASE_URL}/audits?firm=Cyfrin&since=2026-06-01&limit=10' \\
@@ -110,7 +119,7 @@ curl '${BASE_URL}/audits?limit=10' \\
             id="repo"
             method="GET"
             path="/v1/audits?repo="
-            desc="Codebase-level lookup. Pass a GitHub repo and get every audit of that codebase, including the exact commit hash each firm reviewed. If no audit is pinned to that specific repo, we resolve it to the owning protocol and return that protocol's audit history instead — so a connected repo always gets an answer. Every row is labelled match_type: “repo” (exact) or “company” (same protocol)."
+            desc="Codebase-level lookup. Pass a GitHub repo and get every audit of that codebase, including the exact commit hash each firm reviewed. If no audit is pinned to that specific repo, we resolve it to the owning protocol and return that protocol's audit history instead, so a connected repo always gets an answer. Every row is labelled match_type: “repo” (exact) or “company” (same protocol)."
             baseUrl={BASE_URL}
             params={[
               { name: "repo", type: "string (required)", desc: 'Accepts "github.com/org/repo", a full https URL, bare "org/repo", .git suffixes, and /tree/<sha> links.' },
@@ -187,7 +196,7 @@ curl '${BASE_URL}/audits?limit=10' \\
             id="funding"
             method="GET"
             path="/v1/funding-rounds"
-            desc="Crypto funding rounds — feed of raises with investors and announcement links. Refreshed every 15 minutes."
+            desc="Crypto funding rounds: a feed of raises with investors and announcement links. Refreshed every 15 minutes."
             baseUrl={BASE_URL}
             params={[
               { name: "since", type: "date (YYYY-MM-DD)", desc: "Filter round date >= since" },
@@ -224,7 +233,7 @@ curl '${BASE_URL}/audits?limit=10' \\
 
           <section id="limits" className="space-y-3">
             <h2 className="text-2xl font-semibold tracking-tight">Rate limits</h2>
-            <div className="as-card overflow-hidden">
+            <div className="as-card overflow-x-auto">
               <table className="w-full text-[12.5px]">
                 <thead><tr className="border-b border-white/[0.06] text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                   <th className="px-3 py-2">Tier</th>
@@ -245,7 +254,7 @@ curl '${BASE_URL}/audits?limit=10' \\
 
           <section id="errors" className="space-y-3">
             <h2 className="text-2xl font-semibold tracking-tight">Errors</h2>
-            <div className="as-card overflow-hidden">
+            <div className="as-card overflow-x-auto">
               <table className="w-full text-[12.5px]">
                 <thead><tr className="border-b border-white/[0.06] text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                   <th className="px-3 py-2">Status</th><th className="px-3 py-2">Code</th><th className="px-3 py-2">Meaning</th>
@@ -256,7 +265,7 @@ curl '${BASE_URL}/audits?limit=10' \\
                   <tr className="border-b border-white/[0.04]"><td className="px-3 py-2 font-mono">401</td><td className="px-3 py-2 font-mono text-primary">revoked_key</td><td className="px-3 py-2 text-foreground/85">Key was revoked</td></tr>
                   <tr className="border-b border-white/[0.04]"><td className="px-3 py-2 font-mono">404</td><td className="px-3 py-2 font-mono text-primary">not_found</td><td className="px-3 py-2 text-foreground/85">Unknown endpoint path</td></tr>
                   <tr className="border-b border-white/[0.04]"><td className="px-3 py-2 font-mono">429</td><td className="px-3 py-2 font-mono text-primary">rate_limit_exceeded</td><td className="px-3 py-2 text-foreground/85">Retry after 60s</td></tr>
-                  <tr><td className="px-3 py-2 font-mono">500</td><td className="px-3 py-2 font-mono text-primary">db_error</td><td className="px-3 py-2 text-foreground/85">Backend query failed — email us the request ID</td></tr>
+                  <tr><td className="px-3 py-2 font-mono">500</td><td className="px-3 py-2 font-mono text-primary">db_error</td><td className="px-3 py-2 text-foreground/85">Backend query failed. Message us with the request ID</td></tr>
                 </tbody>
               </table>
             </div>
@@ -273,14 +282,14 @@ curl '${BASE_URL}/audits?limit=10' \\
               What's coming after the initial 3 endpoints:
             </p>
             <ul className="space-y-2 text-[12.5px] text-foreground/85">
-              <li>• <code className="text-primary">/v1/firms</code> — Audit firm profiles with portfolio + finding stats</li>
-              <li>• <code className="text-primary">/v1/companies/:slug</code> — Full protocol dossier (audits + bounties + hacks + contracts)</li>
-              <li>• <code className="text-primary">/v1/signals</code> — Firm rotations, audit dryspell, vendor-shopping alerts</li>
+              <li>• <code className="text-primary">/v1/firms</code>: audit firm profiles with portfolio + finding stats</li>
+              <li>• <code className="text-primary">/v1/companies/:slug</code>: full protocol dossier (audits + bounties + hacks + contracts)</li>
+              <li>• <code className="text-primary">/v1/signals</code>: firm rotations, audit dryspell, vendor-shopping alerts</li>
               <li>• Slack + Telegram webhook alerts on new audits / hacks for your watched protocols</li>
               <li>• Push webhooks (<code className="text-primary">POST /v1/webhooks</code>) with HMAC-signed deliveries</li>
             </ul>
             <p className="text-[11.5px] text-muted-foreground pt-1 italic">
-              We ship in daylight — no vaporware. If it's on this page above this section, it works right now. Everything under Roadmap is on our list, not in production.
+              No vaporware: if it's on this page above this section, it works right now. Everything under Roadmap is on our list, not in production.
             </p>
           </section>
 
@@ -291,33 +300,8 @@ curl '${BASE_URL}/audits?limit=10' \\
           </div>
         </div>
       </main>
+      <SiteFooter />
     </div>
-  );
-}
-
-function DocsNav() {
-  return (
-    <nav className="sticky top-0 z-30 backdrop-blur bg-background/70 border-b" style={{ borderColor: "rgb(var(--line-1) / var(--line-1-alpha))" }}>
-      <div className="max-w-[1280px] mx-auto px-4 lg:px-6 h-14 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-[15px]">
-          <svg width={22} height={22} viewBox="0 0 24 24" className="text-primary">
-            <circle cx={12} cy={12} r={10} fill="none" stroke="currentColor" strokeOpacity={0.35} strokeWidth={1.2} />
-            <circle cx={12} cy={12} r={6} fill="none" stroke="currentColor" strokeOpacity={0.55} strokeWidth={1.2} />
-            <circle cx={12} cy={12} r={2} fill="currentColor" />
-            <path d="M12 12 L22 7 A11 11 0 0 1 22 17 Z" fill="currentColor" fillOpacity={0.35}>
-              <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3.5s" repeatCount="indefinite" />
-            </path>
-          </svg>
-          AuditScope<span className="text-primary">.ai</span> <span className="text-[11px] uppercase tracking-wider text-muted-foreground ml-2">Docs</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link to="/pricing" className="text-[12.5px] text-muted-foreground hover:text-foreground px-3 py-1.5">Pricing</Link>
-          <Link to="/account" className="text-[12.5px] inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
-            Get API key <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </div>
-    </nav>
   );
 }
 
@@ -330,7 +314,7 @@ function Endpoint({ id, method, path, desc, params, example, response }: { id: s
       </div>
       <p className="text-muted-foreground text-[13px]">{desc}</p>
       {params.length > 0 && (
-        <div className="as-card overflow-hidden">
+        <div className="as-card overflow-x-auto">
           <table className="w-full text-[12px]">
             <thead><tr className="border-b border-white/[0.06] text-left text-[10px] uppercase tracking-wider text-muted-foreground">
               <th className="px-3 py-2">Param</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Description</th>
@@ -361,7 +345,7 @@ function CodeBlock({ code, label, highlight }: { code: string; label?: string; h
         <span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
         {label && <span className="ml-2 text-[11px] text-muted-foreground font-mono">{label}</span>}
-        <button onClick={() => { navigator.clipboard.writeText(code); toast.success("Copied"); }} className="ml-auto text-muted-foreground hover:text-foreground"><Copy className="w-3.5 h-3.5" /></button>
+        <button onClick={() => { navigator.clipboard.writeText(code); toast.success("Copied"); }} aria-label="Copy code" className="ml-auto p-[15px] -m-[15px] text-muted-foreground hover:text-foreground rounded"><Copy className="w-3.5 h-3.5" /></button>
       </div>
       <pre className={`p-4 text-[11.5px] font-mono leading-relaxed overflow-x-auto whitespace-pre ${highlight ? "text-emerald-300" : "text-foreground/85"}`}>{code}</pre>
     </div>

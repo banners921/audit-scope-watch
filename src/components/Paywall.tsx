@@ -10,7 +10,7 @@ type Preview = {
 };
 
 const INCLUDED = [
-  "Every audit, finding, auditor and protocol — full history with report links",
+  "Every audit, finding, audit firm and project, with full history and report links",
   "Funding rounds, funds, security investors, hacks and bug bounties",
   "Radar, monitors and signal alerts",
   "Full REST API access",
@@ -18,7 +18,7 @@ const INCLUDED = [
 
 // Shown in place of any data page for a signed-in user without paid access.
 // The preview comes from paywall_preview(): counts plus the newest audits'
-// project, firm and date — nothing else is readable until they subscribe.
+// project, firm and date; nothing else is readable until they subscribe.
 export function Paywall() {
   const [starting, setStarting] = useState(false);
   const previewQ = useQuery({
@@ -31,7 +31,7 @@ export function Paywall() {
     },
   });
   const p = previewQ.data;
-  const n = (x?: number) => (x == null ? "—" : x.toLocaleString());
+  const n = (x?: number) => (x == null ? "…" : x.toLocaleString());
 
   const start = async () => {
     setStarting(true);

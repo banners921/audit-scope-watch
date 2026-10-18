@@ -1,0 +1,34 @@
+import { useEffect } from "react";
+
+const SITE = "https://auditscope.ai";
+
+function setMeta(attr: "name" | "property", key: string, content: string) {
+  let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", content);
+}
+
+// Per-page title, description and canonical for the public marketing pages.
+// index.html carries the homepage defaults for crawlers that don't run JS.
+export function usePageMeta(title: string, description: string, path: string) {
+  useEffect(() => {
+    document.title = title;
+    setMeta("name", "description", description);
+    setMeta("property", "og:title", title);
+    setMeta("property", "og:description", description);
+    setMeta("property", "og:url", SITE + path);
+    setMeta("name", "twitter:title", title);
+    setMeta("name", "twitter:description", description);
+    let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "canonical";
+      document.head.appendChild(link);
+    }
+    link.href = SITE + path;
+  }, [title, description, path]);
+}

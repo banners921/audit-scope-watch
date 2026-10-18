@@ -6,7 +6,7 @@ export function Logo({ size = 32, withWordmark = true }: { size?: number; withWo
     <div className="flex items-center" style={{ gap: 0, height: size }}>
       <img
         src="/auditscope-icon.png"
-        alt="AuditScope"
+        alt={withWordmark ? "" : "AuditScope"}
         width={iconSize}
         height={iconSize}
         style={{ display: "block", width: iconSize, height: iconSize, marginLeft: -Math.round(iconSize * 0.15), marginRight: -Math.round(iconSize * 0.05) }}

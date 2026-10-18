@@ -1,52 +1,62 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Check, Crown, Building2, Code2, Bell, Zap, Database, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, Crown, Building2, Code2, Bell, Database, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { startCheckout } from "@/lib/checkout";
+import { useLandingStats, fmtCount as n } from "@/hooks/useLandingStats";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { SiteNav } from "@/components/marketing/SiteNav";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { Faq, type FaqItem } from "@/components/marketing/Faq";
+import { PERSONAS } from "@/components/marketing/personas";
 
 const EVERYTHING_FEATURES = [
-  "Full platform — audits, findings, auditors, companies, funding, contacts, on-chain",
-  "Full history + report URLs (the entire 21K+ archive)",
-  "Full REST API — all endpoints, JSON, cursor pagination",
-  "Signal alerts — new audits, funding, auditor rotations (Telegram; Slack soon)",
-  "Unlimited watched protocols",
-  "Cancel anytime",
+  "The full web app: audits, findings, audit firms, projects, funding, hacks and on-chain contracts",
+  "Full audit history with links to the original reports",
+  "The API: JSON, up to 100,000 calls a month",
+  "Signal alerts for new audits, funding and firm switches (Telegram now, Slack soon)",
+  "Unlimited watched projects",
+  "Cancel any time",
 ];
 
 const FREE_FEATURES = [
-  "Free account",
-  "Preview of the latest audits + dataset totals",
-  "Trial API key (recent window, capped rows)",
+  "Free account, no card needed",
+  "Preview of the latest audits and dataset totals",
+  "Trial API key (60 calls a minute, 5,000 a month)",
 ];
 
-const FAQS = [
-  { q: "Is there a free tier?", a: "A free account shows a preview of the latest audits and a capped trial API key. The platform itself is for subscribers: $79/mo, with a 7-day free trial." },
-  { q: "What do I get for $79?", a: "Everything — the full web app, the complete audit archive with report URLs, the full REST API, and signal alerts. One plan, no add-ons." },
-  { q: "Where does the data come from?", a: "We crawl per-firm GitHub repos (50+ audit firms), protocol docs (Mintlify/GitBook), DefiLlama, web3leads, RootData, Solodit, Immunefi, HackenProof. Every record cites its sources." },
-  { q: "How fresh is it?", a: "Audit firm GitHub repos polled every 30 min. Per-protocol /audits folders hourly. New audits visible within ~5 minutes of GitHub publish. Hacks every 4h. Funding rounds every 15 min." },
-  { q: "What's your data accuracy policy?", a: "If we don't have a value, the API returns null — never a guess. Dead projects are flagged. Audit dates come from PDF metadata or filenames, not inferred." },
-  { q: "Can I cancel anytime?", a: "Yes. No long-term contracts on Pro. You can export your entire dataset as JSON or CSV before canceling." },
-  { q: "Do you offer a trial?", a: "Yes — 7 days free for first-time subscribers. A card is required; cancel any time before the trial ends and you won't be charged." },
-  { q: "What if I need more than 100K calls?", a: "Talk to us. Most teams stay well under it — webhooks mean you don't have to poll. If you're genuinely doing high volume, that's Enterprise territory and we'll quote it." },
+const FAQS: FaqItem[] = [
+  { q: "Is there a free tier?", a: "A free account shows a preview of the latest audits and comes with a capped trial API key. The full database is for subscribers: $79/month after a 7-day free trial." },
+  { q: "What do I get for $79?", a: "Everything: the full web app, the complete audit archive with report links, the API, and signal alerts. One plan, no add-ons." },
+  { q: "Do I need a card for the trial?", a: "Yes. The 7-day trial is for first-time subscribers and asks for a card. Cancel before day 7 and you are not charged. A free account without a trial does not need a card." },
+  { q: "Where does the data come from?", a: "Public sources: reports published by audit firms on their websites and GitHub, project documentation, DefiLlama, Solodit, Immunefi, HackenProof, RootData and web3leads. Each audit links back to its original report." },
+  { q: "How fresh is it?", a: "Audit firms' websites and GitHub are checked every 30 minutes, project documentation every hour, and hack sources every 4 hours. Severity breakdowns are added after we read each report, so they can appear later than the audit." },
+  { q: "Can I cancel any time?", a: "Yes. Cancel from your account page. No contract; you keep access until the end of the period you paid for." },
+  { q: "What if I need more than 100,000 API calls a month?", a: "Message us. Higher volume, bulk exports and custom feeds are quoted separately." },
 ];
 
 export default function Pricing() {
   const { user } = useAuth();
+  const { data: s } = useLandingStats();
+  usePageMeta(
+    "Pricing: AuditScope",
+    "One plan: $79/month for the full crypto security audit database, the API and alerts. 7-day free trial for first-time subscribers, card required, cancel any time.",
+    "/pricing",
+  );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Nav user={user} />
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <SiteNav current="pricing" />
 
       <main className="max-w-[1200px] mx-auto px-4 lg:px-6 py-16">
         {/* Header */}
         <div className="text-center max-w-[720px] mx-auto space-y-3">
           <div className="text-[10px] uppercase tracking-[0.18em] text-primary font-semibold">Pricing</div>
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">Simple, honest pricing.</h1>
+          <h1 className="text-[34px] sm:text-4xl md:text-5xl font-semibold tracking-tight">One plan. Everything included.</h1>
           <p className="text-muted-foreground text-[14.5px] leading-relaxed max-w-[600px] mx-auto">
-            Unlock everything — full platform, API and alerts — for <span className="text-foreground font-semibold">$79/mo</span>. 7-day free trial. One plan, no add-ons.
+            The full web app, the API and alerts for <span className="text-foreground font-semibold">$79 a month</span>. Try it free for 7 days.
           </p>
         </div>
 
-        {/* === Three cards: Free / App $49.99 / API $89 === */}
         <div className="grid md:grid-cols-2 gap-4 mt-12 max-w-[820px] mx-auto">
           {/* Free */}
           <div className="as-card p-6 flex flex-col gap-5">
@@ -56,9 +66,9 @@ export default function Pricing() {
                 <span className="text-4xl font-semibold text-foreground tabular-nums">$0</span>
                 <span className="text-[12.5px] text-muted-foreground">forever</span>
               </div>
-              <div className="text-[12.5px] text-muted-foreground mt-1.5">A look before you start a trial.</div>
+              <div className="text-[12.5px] text-muted-foreground mt-1.5">A look before you start the trial.</div>
             </div>
-            <ul className="space-y-2 text-[12.5px] flex-1">
+            <ul className="space-y-2 text-[13px] flex-1">
               {FREE_FEATURES.map((f, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <Check className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0 mt-0.5" />
@@ -66,7 +76,7 @@ export default function Pricing() {
                 </li>
               ))}
             </ul>
-            <Link to={user ? "/dashboard" : "/signup"} className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md border border-white/[0.10] text-[13px] font-semibold hover:bg-white/[0.04]">
+            <Link to={user ? "/dashboard" : "/signup"} className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-md border border-white/[0.10] text-[13px] font-semibold hover:bg-white/[0.04]">
               {user ? "Open app" : "Sign up free"} <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -82,9 +92,9 @@ export default function Pricing() {
                 <span className="text-5xl font-semibold text-foreground tabular-nums">$79</span>
                 <span className="text-[13px] text-muted-foreground">/mo</span>
               </div>
-              <div className="text-[12.5px] text-muted-foreground mt-1.5">Full platform + API + alerts. One plan.</div>
+              <div className="text-[12.5px] text-muted-foreground mt-1.5">Web app, API and alerts.</div>
             </div>
-            <ul className="space-y-2 text-[12.5px] flex-1">
+            <ul className="space-y-2 text-[13px] flex-1">
               {EVERYTHING_FEATURES.map((f, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
@@ -93,128 +103,75 @@ export default function Pricing() {
               ))}
             </ul>
             {user ? (
-              <button onClick={startCheckout} className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
+              <button onClick={startCheckout} className="inline-flex items-center justify-center gap-1.5 min-h-[48px] px-4 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
                 Start 7-day free trial <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <Link to="/signup" className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
+              <Link to="/signup" className="inline-flex items-center justify-center gap-1.5 min-h-[48px] px-4 rounded-md bg-primary text-primary-foreground text-[13.5px] font-semibold hover:bg-primary/90">
                 Start 7-day free trial <ArrowRight className="w-4 h-4" />
               </Link>
             )}
-            <div className="text-[11px] text-muted-foreground text-center -mt-1">7 days free, then $79/mo. Card required. Cancel anytime.</div>
+            <div className="text-[11px] text-muted-foreground text-center -mt-1">7 days free, then $79/month. Card required. Cancel before day 7 and you pay nothing.</div>
           </div>
         </div>
 
-        {/* What you get — visual */}
-        <section className="mt-20 grid md:grid-cols-4 gap-3">
-          <ValueProp icon={<Code2 className="w-5 h-5" />} title="REST API" body="14 endpoints — audits, firms, companies, hacks, funding, signals. JSON. Cursor-paginated." />
-          <ValueProp icon={<Bell className="w-5 h-5" />} title="Real-time alerts" body="Webhooks fire seconds after an audit drops or a hack hits. Slack + Telegram pre-built." />
-          <ValueProp icon={<Database className="w-5 h-5" />} title="The full archive" body="17K+ audits, 5K+ protocols, 50+ firms, every funding round + hack since 2020." />
-          <ValueProp icon={<ShieldCheck className="w-5 h-5" />} title="Custom signals" body="Audit-rotation, dryspell, vendor-shopping, hiring surge — query the patterns you care about." />
+        {/* What you get */}
+        <section className="mt-20 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <ValueProp icon={<Database className="w-5 h-5" />} title="The full archive" body={`${n(s?.audits)} audits, ${n(s?.findings)} findings, ${n(s?.auditors)} audit firms and ${n(s?.hacks)} hacks.`} />
+          <ValueProp icon={<Code2 className="w-5 h-5" />} title="API" body="Audits (including lookup by code repository), hacks and funding rounds as JSON, paginated." />
+          <ValueProp icon={<Bell className="w-5 h-5" />} title="Alerts" body="A Telegram message when a project you follow publishes an audit, raises money or switches firms. Slack coming soon." />
+          <ValueProp icon={<ShieldCheck className="w-5 h-5" />} title="Signals" body="Spot projects that switch audit firms or change their code after the last audit." />
         </section>
 
-        {/* Enterprise / bespoke — simple contact, no separate tier */}
+        {/* Enterprise / bespoke: simple contact, no separate tier */}
         <section className="mt-20 as-card p-6 md:p-8 bg-gradient-to-br from-emerald-500/[0.04] to-transparent border-emerald-500/20 text-center">
           <div className="text-[10px] uppercase tracking-[0.16em] text-emerald-300 font-semibold inline-flex items-center gap-1.5 justify-center">
             <Building2 className="w-3.5 h-3.5" /> Need more?
           </div>
           <h2 className="text-xl md:text-2xl font-semibold tracking-tight mt-2">Bulk exports, higher limits, or a custom feed?</h2>
           <p className="text-[13px] text-muted-foreground leading-relaxed max-w-[480px] mx-auto mt-2">
-            For funds, exchanges, insurance and security firms that need volume beyond the standard plan — we'll scope and quote it.
+            For funds, exchanges, insurers and security firms that need more than the standard plan. We'll scope it and send a quote.
           </p>
-          <a href="https://t.me/web3leads" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 text-[12.5px] font-semibold mt-4">
+          <a href="https://t.me/web3leads" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 text-[12.5px] font-semibold mt-4">
             Message us on Telegram <ArrowRight className="w-3.5 h-3.5" />
           </a>
         </section>
 
-        {/* Built for */}
+        {/* Who it's for */}
         <section className="mt-20">
-          <h2 className="text-2xl font-semibold tracking-tight text-center mb-8">Built for</h2>
-          <div className="grid md:grid-cols-4 gap-3">
-            <UseCase title="Risk teams" body="Get pinged the moment a portfolio protocol drops a fresh audit — or a stale one expires." />
-            <UseCase title="Listing committees" body="Filter exchange listing candidates by audit posture before the review meeting." />
-            <UseCase title="Audit firm GTM" body="See which competitors are about to lose a relationship. Hit them before the RFP." />
-            <UseCase title="Insurance underwriters" body="Price coverage off real-time finding severity + fix rates instead of a 9-month-old PDF." />
+          <h2 className="text-2xl font-semibold tracking-tight text-center mb-8">Who it's for</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {PERSONAS.map((p) => (
+              <UseCase key={p.title} icon={<p.icon className="w-4 h-4" aria-hidden />} title={p.title} body={p.job} />
+            ))}
           </div>
         </section>
 
         {/* FAQs */}
         <div className="mt-20 max-w-[800px] mx-auto">
           <h2 className="text-2xl font-semibold tracking-tight text-center mb-8">Frequently asked</h2>
-          <div className="space-y-3">
-            {FAQS.map((f, i) => (
-              <details key={i} className="as-card p-4 group">
-                <summary className="cursor-pointer text-[13.5px] font-semibold text-foreground list-none flex items-center justify-between">
-                  {f.q}
-                  <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
-                </summary>
-                <p className="text-[12.5px] text-muted-foreground mt-2 leading-relaxed">{f.a}</p>
-              </details>
-            ))}
-          </div>
+          <Faq items={FAQS} />
         </div>
 
         {/* CTA */}
         <div className="mt-20 text-center as-card p-10">
-          <h2 className="text-2xl font-semibold tracking-tight">Stop sourcing audits in Excel.</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Try it on your next diligence request.</h2>
           <p className="text-muted-foreground text-[13px] mt-2 max-w-[520px] mx-auto">
-            7-day free trial. If the API doesn't replace at least one analyst-day per week, cancel before it ends.
+            7 days free, then $79/month. Cancel before day 7 and you pay nothing.
           </p>
-          <div className="flex items-center justify-center gap-2 mt-5">
-            <Link to={user ? "/account" : "/signup"} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-5">
+            <Link to={user ? "/account" : "/signup"} className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">
               {user ? "Get API key" : "Start trial"} <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link to="/docs" className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md border border-white/[0.10] text-[13px] font-semibold hover:bg-white/[0.04]">
+            <Link to="/docs" className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-md border border-white/[0.10] text-[13px] font-semibold hover:bg-white/[0.04]">
               Read the docs
             </Link>
           </div>
         </div>
       </main>
 
-      <footer className="py-10 border-t" style={{ borderColor: "rgb(var(--line-1) / var(--line-1-alpha))" }}>
-        <div className="max-w-[1200px] mx-auto px-4 lg:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[12px] text-muted-foreground">
-          <div>© AuditScope.ai · Live audit intelligence for crypto</div>
-          <div className="flex items-center gap-5">
-            <Link to="/" className="hover:text-foreground">Home</Link>
-            <Link to="/docs" className="hover:text-foreground">Docs</Link>
-            <a href="https://t.me/web3leads" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">Telegram</a>
-            <Link to="/login" className="hover:text-foreground">Sign in</Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
-  );
-}
-
-function Nav({ user }: { user: any }) {
-  return (
-    <nav className="sticky top-0 z-30 backdrop-blur bg-background/70 border-b" style={{ borderColor: "rgb(var(--line-1) / var(--line-1-alpha))" }}>
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-6 h-14 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-[15px]">
-          <RadarLogo size={22} />
-          AuditScope<span className="text-primary">.ai</span>
-        </Link>
-        <div className="hidden md:flex items-center gap-6 text-[12.5px] text-muted-foreground">
-          <Link to="/#data" className="hover:text-foreground">Data</Link>
-          <Link to="/docs" className="hover:text-foreground">Docs</Link>
-          <Link to="/pricing" className="text-foreground">Pricing</Link>
-        </div>
-        <div className="flex items-center gap-2">
-          {user ? (
-            <Link to="/account" className="text-[12.5px] inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
-              Account <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          ) : (
-            <>
-              <Link to="/login" className="text-[12.5px] text-muted-foreground hover:text-foreground px-3 py-1.5">Sign in</Link>
-              <Link to="/signup" className="text-[12.5px] inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90">
-                Get started <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </nav>
   );
 }
 
@@ -222,33 +179,18 @@ function ValueProp({ icon, title, body }: { icon: React.ReactNode; title: string
   return (
     <div className="as-card p-5 space-y-2">
       <div className="w-9 h-9 rounded-md bg-primary/15 text-primary flex items-center justify-center">{icon}</div>
-      <div className="text-[13px] font-semibold text-foreground">{title}</div>
-      <div className="text-[11.5px] text-muted-foreground leading-relaxed">{body}</div>
+      <h3 className="text-[14px] font-semibold text-foreground">{title}</h3>
+      <p className="text-[13px] text-muted-foreground leading-relaxed">{body}</p>
     </div>
   );
 }
 
-function UseCase({ title, body }: { title: string; body: string }) {
+function UseCase({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
     <div className="as-card p-5 space-y-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-primary inline-flex items-center gap-1.5">
-        <Zap className="w-3 h-3" />Use case
-      </div>
-      <div className="text-[13px] font-semibold text-foreground">{title}</div>
-      <div className="text-[11.5px] text-muted-foreground leading-relaxed">{body}</div>
+      <div className="text-primary">{icon}</div>
+      <h3 className="text-[14px] font-semibold text-foreground">{title}</h3>
+      <p className="text-[13px] text-muted-foreground leading-relaxed">{body}</p>
     </div>
-  );
-}
-
-function RadarLogo({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" className="text-primary">
-      <circle cx={12} cy={12} r={10} fill="none" stroke="currentColor" strokeOpacity={0.35} strokeWidth={1.2} />
-      <circle cx={12} cy={12} r={6} fill="none" stroke="currentColor" strokeOpacity={0.55} strokeWidth={1.2} />
-      <circle cx={12} cy={12} r={2} fill="currentColor" />
-      <path d="M12 12 L22 7 A11 11 0 0 1 22 17 Z" fill="currentColor" fillOpacity={0.35}>
-        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="3.5s" repeatCount="indefinite" />
-      </path>
-    </svg>
   );
 }

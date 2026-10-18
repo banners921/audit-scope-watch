@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,57 +7,68 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Dashboard from "./pages/Dashboard";
-import Funds from "./pages/Funds";
-import FundDetail from "./pages/FundDetail";
-import Alerts from "./pages/Alerts";
-import Profile from "./pages/Profile";
-import SavedTargets from "./pages/SavedTargets";
-import Reminders from "./pages/Reminders";
-import AuditorDetail from "./pages/AuditorDetail";
-import FundingRounds from "./pages/FundingRounds";
-import UnusualActivity from "./pages/UnusualActivity";
-import Reports from "./pages/Reports";
-import ProtocolDossier from "./pages/ProtocolDossier";
-import WatchedFunds from "./pages/WatchedFunds";
-import MorningBrief from "./pages/MorningBrief";
-import OpenFindings from "./pages/OpenFindings";
-import Compare from "./pages/Compare";
-import PortfolioAnalytics from "./pages/PortfolioAnalytics";
-import LPReport from "./pages/LPReport";
-import FundReports from "./pages/FundReports";
-import Stover from "./pages/Stover";
 import NotFound from "./pages/NotFound.tsx";
 import Landing from "./pages/Landing";
 import Pricing from "./pages/Pricing";
 import Docs from "./pages/Docs";
-import Account from "./pages/Account";
-import HomeRedirect from "./pages/HomeRedirect";
-import Onboarding from "./pages/Onboarding";
-import Watchlist from "./pages/Watchlist";
-import CompaniesBrowse from "./pages/CompaniesBrowse";
-import FundsBrowse from "./pages/FundsBrowse";
-import SecurityInvestors from "./pages/SecurityInvestors";
-import AuditDetail from "./pages/AuditDetail";
-import FundingRoundsBrowse from "./pages/FundingRoundsBrowse";
-import AuditsBrowse from "./pages/AuditsBrowse";
-import AuditorsBrowse from "./pages/AuditorsBrowse";
-import Companies from "./pages/Companies";
-import BookSecurity from "./pages/BookSecurity";
-import BookNews from "./pages/BookNews";
-import BookGrowth from "./pages/BookGrowth";
-import BookCalendar from "./pages/BookCalendar";
-import FundAnalytics from "./pages/FundAnalytics";
-import Monitor from "./pages/Monitor";
-import FundsIntel from "./pages/FundsIntel";
-import AuditedRepos from "./pages/AuditedRepos";
-import BugBounties from "./pages/BugBounties";
-import SmartContracts from "./pages/SmartContracts";
-import AuditReports from "./pages/AuditReports";
-import Admin from "./pages/Admin";
-import Radar from "./pages/Radar";
+
+// Marketing and auth pages load eagerly; the signed-in app loads per route so
+// the homepage doesn't download every dashboard page.
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Funds = lazy(() => import("./pages/Funds"));
+const FundDetail = lazy(() => import("./pages/FundDetail"));
+const Alerts = lazy(() => import("./pages/Alerts"));
+const Profile = lazy(() => import("./pages/Profile"));
+const SavedTargets = lazy(() => import("./pages/SavedTargets"));
+const Reminders = lazy(() => import("./pages/Reminders"));
+const AuditorDetail = lazy(() => import("./pages/AuditorDetail"));
+const FundingRounds = lazy(() => import("./pages/FundingRounds"));
+const UnusualActivity = lazy(() => import("./pages/UnusualActivity"));
+const Reports = lazy(() => import("./pages/Reports"));
+const ProtocolDossier = lazy(() => import("./pages/ProtocolDossier"));
+const WatchedFunds = lazy(() => import("./pages/WatchedFunds"));
+const MorningBrief = lazy(() => import("./pages/MorningBrief"));
+const OpenFindings = lazy(() => import("./pages/OpenFindings"));
+const Compare = lazy(() => import("./pages/Compare"));
+const PortfolioAnalytics = lazy(() => import("./pages/PortfolioAnalytics"));
+const LPReport = lazy(() => import("./pages/LPReport"));
+const FundReports = lazy(() => import("./pages/FundReports"));
+const Stover = lazy(() => import("./pages/Stover"));
+const Account = lazy(() => import("./pages/Account"));
+const HomeRedirect = lazy(() => import("./pages/HomeRedirect"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Watchlist = lazy(() => import("./pages/Watchlist"));
+const CompaniesBrowse = lazy(() => import("./pages/CompaniesBrowse"));
+const FundsBrowse = lazy(() => import("./pages/FundsBrowse"));
+const SecurityInvestors = lazy(() => import("./pages/SecurityInvestors"));
+const AuditDetail = lazy(() => import("./pages/AuditDetail"));
+const FundingRoundsBrowse = lazy(() => import("./pages/FundingRoundsBrowse"));
+const AuditsBrowse = lazy(() => import("./pages/AuditsBrowse"));
+const AuditorsBrowse = lazy(() => import("./pages/AuditorsBrowse"));
+const Companies = lazy(() => import("./pages/Companies"));
+const BookSecurity = lazy(() => import("./pages/BookSecurity"));
+const BookNews = lazy(() => import("./pages/BookNews"));
+const BookGrowth = lazy(() => import("./pages/BookGrowth"));
+const BookCalendar = lazy(() => import("./pages/BookCalendar"));
+const FundAnalytics = lazy(() => import("./pages/FundAnalytics"));
+const Monitor = lazy(() => import("./pages/Monitor"));
+const FundsIntel = lazy(() => import("./pages/FundsIntel"));
+const AuditedRepos = lazy(() => import("./pages/AuditedRepos"));
+const BugBounties = lazy(() => import("./pages/BugBounties"));
+const SmartContracts = lazy(() => import("./pages/SmartContracts"));
+const AuditReports = lazy(() => import("./pages/AuditReports"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Radar = lazy(() => import("./pages/Radar"));
 
 const queryClient = new QueryClient();
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-muted-foreground text-sm">Loading…</div>
+    </div>
+  );
+}
 
 function LegacyProtocolRedirect() {
   const { slug } = useParams<{ slug: string }>();
@@ -69,6 +81,7 @@ const App = () => (
       <Sonner theme="dark" position="top-right" />
       <BrowserRouter>
         <AuthProvider>
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route
               path="/"
@@ -139,6 +152,7 @@ const App = () => (
             <Route path="/stover" element={<ProtectedRoute><Stover /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
