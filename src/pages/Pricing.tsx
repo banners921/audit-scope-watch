@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { startCheckout } from "@/lib/checkout";
 import { useLandingStats, fmtCount as n } from "@/hooks/useLandingStats";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useForceDarkTheme } from "@/hooks/useTheme";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { Faq, type FaqItem } from "@/components/marketing/Faq";
@@ -35,6 +36,7 @@ const FAQS: FaqItem[] = [
 ];
 
 export default function Pricing() {
+  useForceDarkTheme();
   const { user } = useAuth();
   const { data: s } = useLandingStats();
   usePageMeta(

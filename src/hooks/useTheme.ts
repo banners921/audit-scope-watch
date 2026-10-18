@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 const STORAGE_KEY = "as_theme";
 export type Theme = "light" | "dark";
@@ -30,4 +30,14 @@ export function useTheme() {
 
   const toggle = () => setThemeState((t) => (t === "dark" ? "light" : "dark"));
   return { theme, setTheme: setThemeState, toggle };
+}
+
+// The public marketing pages are always dark, whatever theme the visitor saved
+// in the app. Applied before paint (no light flash); the saved theme comes
+// back when they navigate into the app.
+export function useForceDarkTheme() {
+  useLayoutEffect(() => {
+    applyTheme("dark");
+    return () => applyTheme(getInitialTheme());
+  }, []);
 }

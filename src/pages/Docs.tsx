@@ -2,12 +2,14 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Copy, KeyRound, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useForceDarkTheme } from "@/hooks/useTheme";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 
 const BASE_URL = "https://qktjbtmcjrwzmtqnszbq.supabase.co/functions/v1/api-v1/v1";
 
 export default function Docs() {
+  useForceDarkTheme();
   const copy = (s: string) => { navigator.clipboard.writeText(s); toast.success("Copied"); };
   usePageMeta(
     "API docs: AuditScope",
@@ -294,7 +296,7 @@ curl '${BASE_URL}/audits?limit=10' \\
           </section>
 
           <div className="pt-8 border-t" style={{ borderColor: "rgb(var(--line-1) / var(--line-1-alpha))" }}>
-            <Link to="/account" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">
+            <Link to="/account" className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-md bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-primary/90">
               Get your API key <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

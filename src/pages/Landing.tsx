@@ -7,6 +7,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useLandingStats, fmtCount as n } from "@/hooks/useLandingStats";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useForceDarkTheme } from "@/hooks/useTheme";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { LazyRadar } from "@/components/marketing/LazyRadar";
@@ -44,6 +45,7 @@ const FAQS = [
 ];
 
 export default function Landing() {
+  useForceDarkTheme();
   const { user } = useAuth();
   usePageMeta(
     "AuditScope: security audit data for crypto projects",
