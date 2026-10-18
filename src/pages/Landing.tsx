@@ -71,7 +71,7 @@ export default function Landing() {
   const STEPS = [
     { icon: Radar, title: "We collect", body: "Every 30 minutes we check the websites and GitHub accounts where audit firms publish their reports, plus project documentation every hour." },
     { icon: Layers, title: "We organize", body: "Each report is matched to the right project and its code, and every issue is put on one severity scale, whatever format the firm used." },
-    { icon: Search, title: "You get answers", body: "Search it in the web app, pull it into your own tools through the API, or get a Telegram alert when something changes." },
+    { icon: Search, title: "You get answers", body: "Search it in the web app, pull it into your own tools through the API, or get a Telegram or Slack alert when something changes." },
   ];
 
   return (
@@ -228,10 +228,10 @@ export default function Landing() {
             <div aria-hidden className="w-9 h-9 rounded-md bg-primary/[0.10] text-primary flex items-center justify-center"><Bell className="w-5 h-5" /></div>
             <h2 className="text-[17px] font-semibold text-foreground">Signal alerts</h2>
             <p className="text-[13.5px] text-muted-foreground leading-relaxed">
-              Get a message when a project you follow publishes a new audit, raises money, or switches audit firms.
+              Get a Telegram or Slack message when a project you follow publishes a new audit, raises money, or switches audit firms.
               You pick which signals matter.
             </p>
-            <p className="text-[12.5px] font-semibold"><span className="text-emerald-300">Telegram: live</span> <span className="text-muted-foreground">·</span> <span className="text-amber-200">Slack: coming soon</span></p>
+            <p className="text-[12.5px] font-semibold"><span className="text-emerald-300">Telegram: live</span> <span className="text-muted-foreground">·</span> <span className="text-emerald-300">Slack: live</span></p>
           </div>
         </section>
 

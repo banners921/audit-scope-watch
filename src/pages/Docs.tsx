@@ -287,7 +287,6 @@ curl '${BASE_URL}/audits?limit=10' \\
               <li>• <code className="text-primary">/v1/firms</code>: audit firm profiles with portfolio + finding stats</li>
               <li>• <code className="text-primary">/v1/companies/:slug</code>: full protocol dossier (audits + bounties + hacks + contracts)</li>
               <li>• <code className="text-primary">/v1/signals</code>: firm rotations, audit dryspell, vendor-shopping alerts</li>
-              <li>• Slack + Telegram webhook alerts on new audits / hacks for your watched protocols</li>
               <li>• Push webhooks (<code className="text-primary">POST /v1/webhooks</code>) with HMAC-signed deliveries</li>
             </ul>
             <p className="text-[11.5px] text-muted-foreground pt-1 italic">

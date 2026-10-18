@@ -285,10 +285,10 @@ function NotificationCard({ tier, profile }: { tier: PlanTier; profile: any }) {
       const r = await fetch("https://qktjbtmcjrwzmtqnszbq.supabase.co/functions/v1/slack-notify", {
         method: "POST",
         headers: { Authorization: `Bearer ${session?.access_token ?? ""}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ webhook_url: url.trim(), text: "✅ AuditScope test alert — your Slack notifications are working." }),
+        body: JSON.stringify({ webhook_url: url.trim(), text: "✅ AuditScope test alert: your Slack notifications are working." }),
       });
       const j = await r.json();
-      if (j.ok) toast.success("Test sent — check your Slack channel");
+      if (j.ok) toast.success("Test sent. Check your Slack channel.");
       else toast.error(j.error || "Failed to send");
     } catch (e: any) {
       toast.error(e?.message || "Failed to send");
@@ -323,7 +323,7 @@ function NotificationCard({ tier, profile }: { tier: PlanTier; profile: any }) {
           <Zap className="w-6 h-6 text-primary mx-auto" />
           <div className="text-[14px] font-semibold text-foreground">Watchlist alerts are a Developer feature</div>
           <p className="text-[12.5px] text-muted-foreground max-w-[420px] mx-auto">
-            Pipe new audits, hacks, funding rounds, and news for your watched protocols directly to Telegram. Slack coming soon.
+            Pipe new audits, hacks, funding rounds, and news for your watched protocols directly to Telegram and Slack.
           </p>
           <button onClick={startCheckout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold hover:bg-primary/90">
             Start free trial — $79/mo <ArrowRight className="w-3.5 h-3.5" />

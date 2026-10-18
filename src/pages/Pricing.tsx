@@ -14,7 +14,7 @@ const EVERYTHING_FEATURES = [
   "The full web app: audits, findings, audit firms, projects, funding, hacks and on-chain contracts",
   "Full audit history with links to the original reports",
   "The API: JSON, up to 100,000 calls a month",
-  "Signal alerts for new audits, funding and firm switches (Telegram now, Slack soon)",
+  "Signal alerts for new audits, funding and firm switches, on Telegram and Slack",
   "Unlimited watched projects",
   "Cancel any time",
 ];
@@ -121,7 +121,7 @@ export default function Pricing() {
         <section className="mt-20 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <ValueProp icon={<Database className="w-5 h-5" />} title="The full archive" body={`${n(s?.audits)} audits, ${n(s?.findings)} findings, ${n(s?.auditors)} audit firms and ${n(s?.hacks)} hacks.`} />
           <ValueProp icon={<Code2 className="w-5 h-5" />} title="API" body="Audits (including lookup by code repository), hacks and funding rounds as JSON, paginated." />
-          <ValueProp icon={<Bell className="w-5 h-5" />} title="Alerts" body="A Telegram message when a project you follow publishes an audit, raises money or switches firms. Slack coming soon." />
+          <ValueProp icon={<Bell className="w-5 h-5" />} title="Alerts" body="A Telegram or Slack message when a project you follow publishes an audit, raises money or switches firms." />
           <ValueProp icon={<ShieldCheck className="w-5 h-5" />} title="Signals" body="Spot projects that switch audit firms or change their code after the last audit." />
         </section>
 

@@ -100,7 +100,7 @@ export default function Watchlist() {
             <span className="inline-flex items-center gap-1.5"><Bell className="w-3 h-3 text-emerald-400" /> Slack alerts active</span>
           ) : (
             <Link to="/profile" className="inline-flex items-center gap-1.5 text-amber-300 hover:underline">
-              <BellOff className="w-3 h-3" /> Slack not connected — set up in Profile
+              <BellOff className="w-3 h-3" /> Slack not connected. Set it up in Profile
             </Link>
           )}
         </div>
