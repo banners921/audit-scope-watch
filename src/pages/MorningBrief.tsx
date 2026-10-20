@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip as ReTooltip, LineChart, Line } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { RISK_SCORES_LIVE } from "@/lib/riskScores";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -148,7 +149,7 @@ export default function MorningBrief() {
   // ---- Risk scores + history (for trend sparklines) ----
   const scoresQ = useQuery({
     queryKey: ["mb-scores", slugs.length, fundSlug],
-    enabled: slugs.length > 0,
+    enabled: RISK_SCORES_LIVE && slugs.length > 0,
     queryFn: async () => {
       const { data } = await supabase.from("protocol_risk_scores").select("company_slug,composite_score,band").in("company_slug", slugs);
       const m = new Map<string, { score: number; band: string }>();
@@ -159,7 +160,7 @@ export default function MorningBrief() {
 
   const riskHistoryQ = useQuery({
     queryKey: ["mb-risk-history", slugs.length, fundSlug],
-    enabled: slugs.length > 0,
+    enabled: RISK_SCORES_LIVE && slugs.length > 0,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 32 * 86400000).toISOString().slice(0, 10);
       const { data } = await supabase

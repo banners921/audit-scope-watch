@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ShieldCheck, AlertTriangle, Clock, Skull, ArrowRight, Calendar } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, Cell, PieChart, Pie, Legend } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { RISK_SCORES_LIVE } from "@/lib/riskScores";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BookTabs } from "@/components/BookTabs";
 import { useFundSlug, usePortfolioSlugs, usePortfolioCompanies } from "@/lib/usePortfolioSlugs";
@@ -65,7 +66,7 @@ export default function BookSecurity() {
 
   const scoresQ = useQuery({
     queryKey: ["bsec-scores", slugs.length],
-    enabled: slugs.length > 0,
+    enabled: RISK_SCORES_LIVE && slugs.length > 0,
     queryFn: async () => {
       const { data } = await supabase.from("protocol_risk_scores").select("company_slug,composite_score,band").in("company_slug", slugs);
       return (data ?? []) as any[];
@@ -216,7 +217,7 @@ export default function BookSecurity() {
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className={`grid grid-cols-1 gap-5 ${RISK_SCORES_LIVE ? "lg:grid-cols-2" : ""}`}>
         <div className="as-card p-4">
           <h3 className="text-sm font-semibold text-white mb-3">Findings by severity <span className="text-[10px] font-normal text-muted-foreground">· as reported in audits</span></h3>
           <div className="h-[200px]">
@@ -232,7 +233,7 @@ export default function BookSecurity() {
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="as-card p-4">
+        {RISK_SCORES_LIVE && <div className="as-card p-4">
           <h3 className="text-sm font-semibold text-white mb-3">Risk-band distribution</h3>
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -244,7 +245,7 @@ export default function BookSecurity() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Open findings register */}

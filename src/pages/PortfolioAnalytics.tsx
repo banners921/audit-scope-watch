@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { PieChart, BarChart3, Users, Layers, Network, Calendar, ArrowRight, Download, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { RISK_SCORES_LIVE } from "@/lib/riskScores";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -64,7 +65,9 @@ export default function PortfolioAnalytics() {
     queryFn: async () => {
       const [tvl, risk, comp, chains, rounds] = await Promise.all([
         supabase.from("protocol_metrics").select("company_slug,tvl,date").in("company_slug", positionSlugs).not("tvl", "is", null).order("date", { ascending: false }).limit(2000),
-        supabase.from("protocol_risk_scores").select("company_slug,composite_score,band").in("company_slug", positionSlugs),
+        RISK_SCORES_LIVE
+          ? supabase.from("protocol_risk_scores").select("company_slug,composite_score,band").in("company_slug", positionSlugs)
+          : Promise.resolve({ data: [] as any[] }),
         supabase.from("companies").select("slug,name,category,url,logo,total_raised_usd").in("slug", positionSlugs),
         supabase.from("chain_addresses").select("company_slug,chain").in("company_slug", positionSlugs),
         supabase.from("funding_rounds").select("company_slug,amount_usd,round_type,date,all_investors").in("company_slug", positionSlugs),

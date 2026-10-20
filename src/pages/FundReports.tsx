@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { RISK_SCORES_LIVE } from "@/lib/riskScores";
 import {
   FileText, Shield, Users, Layers, ShieldCheck, Coins,
   Calendar, Download, Printer, ArrowRight, Skull, ExternalLink,
@@ -996,7 +997,7 @@ function RiskReportTemplate({ tf }: { tf: Timeframe }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Kpi label="Portfolio risk score" value="6.4 / 10" sub="composite" tone="warn" />
+        {RISK_SCORES_LIVE && <Kpi label="Portfolio risk score" value="6.4 / 10" sub="composite" tone="warn" />}
         <Kpi label="Open criticals" value="3" sub="across 2 portcos" tone="alert" />
         <Kpi label="Single-firm coverage" value="11" sub="audited by only 1 firm" tone="warn" />
         <Kpi label="Hack exposure" value="$0" sub="no incidents in period" tone="good" />

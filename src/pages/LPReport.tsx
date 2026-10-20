@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { FileText, Printer, Download, ShieldCheck, AlertTriangle, TrendingUp, Skull, Activity, Bug } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { RISK_SCORES_LIVE } from "@/lib/riskScores";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -69,7 +70,9 @@ export default function LPReport() {
     queryFn: async () => {
       const [comp, risk, tvl, findings, hacks] = await Promise.all([
         supabase.from("companies").select("slug,name,category,url,logo,has_been_hacked,has_bug_bounty,last_audit_date,last_audit_firm").in("slug", slugs),
-        supabase.from("protocol_risk_scores").select("company_slug,composite_score,band").in("company_slug", slugs),
+        RISK_SCORES_LIVE
+          ? supabase.from("protocol_risk_scores").select("company_slug,composite_score,band").in("company_slug", slugs)
+          : Promise.resolve({ data: [] as any[] }),
         supabase.from("protocol_metrics").select("company_slug,tvl,date").in("company_slug", slugs).not("tvl", "is", null).order("date", { ascending: false }).limit(3000),
         supabase.from("audit_history").select("company_slug,findings_critical,findings_high").in("company_slug", slugs).eq("findings_extraction_status", "extracted"),
         supabase.from("hacks").select("company_slug,name,hack_date,amount_usd").in("company_slug", slugs).order("hack_date", { ascending: false }),
@@ -139,9 +142,9 @@ export default function LPReport() {
   const onPrint = () => window.print();
   const onCsv = () => {
     if (!summary) return;
-    const header = ["slug", "name", "category", "tvl", "risk_score", "band", "critical", "high", "last_audit_firm", "last_audit_date", "hacked", "bounty"];
+    const header = ["slug", "name", "category", "tvl", ...(RISK_SCORES_LIVE ? ["risk_score", "band"] : []), "critical", "high", "last_audit_firm", "last_audit_date", "hacked", "bounty"];
     const rows = summary.rows.map((r) => [
-      r.slug, r.name, r.category || "", r.tvl ?? "", r.score ?? "", r.band ?? "",
+      r.slug, r.name, r.category || "", r.tvl ?? "", ...(RISK_SCORES_LIVE ? [r.score ?? "", r.band ?? ""] : []),
       r.critical, r.high, r.last_audit_firm ?? "", r.last_audit_date ?? "",
       r.has_hacked ? "yes" : "", r.has_bounty ? "yes" : "",
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
@@ -208,10 +211,10 @@ export default function LPReport() {
               <div className="text-[11px] uppercase tracking-[0.12em] text-primary font-bold mb-3">Executive summary</div>
               <p className="text-[14px] text-white/90 leading-relaxed">
                 {summary.totalPositions} active positions across {summary.sectorList.length} sectors{summary.totalTvl > 0 ? ` with ${compactUsd(summary.totalTvl)} aggregate TVL exposure` : ""}.{" "}
-                {summary.bandsCrit + summary.bandsHigh > 0
+                {RISK_SCORES_LIVE && (summary.bandsCrit + summary.bandsHigh > 0
                   ? <><span className="text-rose-300 font-medium">{summary.bandsCrit + summary.bandsHigh} positions ({Math.round((summary.bandsCrit + summary.bandsHigh) / summary.totalPositions * 100)}%)</span> are flagged at elevated operational risk and warrant near-term attention.</>
                   : <>Risk posture is within acceptable bounds, with no elevated-risk positions in the book.</>
-                }{" "}
+                )}{" "}
                 {summary.totalCriticals > 0
                   ? <><span className="text-rose-300 font-medium">{summary.totalCriticals} unresolved critical audit findings</span> are tracked across <span className="font-medium">{summary.rows.filter(r => r.critical > 0).length}</span> protocols.</>
                   : <>No critical audit findings are currently outstanding in the book.</>
@@ -229,12 +232,12 @@ export default function LPReport() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <KPI label="Positions" value={summary.totalPositions.toString()} />
                 <KPI label="Portfolio TVL" value={compactUsd(summary.totalTvl)} />
-                <KPI label="Elevated risk" value={(summary.bandsCrit + summary.bandsHigh).toString()} sub={`${summary.bandsCrit} crit · ${summary.bandsHigh} high`} tone={(summary.bandsCrit + summary.bandsHigh) > 0 ? "alert" : "good"} />
+                {RISK_SCORES_LIVE && <KPI label="Elevated risk" value={(summary.bandsCrit + summary.bandsHigh).toString()} sub={`${summary.bandsCrit} crit · ${summary.bandsHigh} high`} tone={(summary.bandsCrit + summary.bandsHigh) > 0 ? "alert" : "good"} />}
                 <KPI label="Open criticals" value={summary.totalCriticals.toString()} sub={`${summary.totalHighs} highs`} tone={summary.totalCriticals > 0 ? "alert" : "good"} />
                 <KPI label="Audited %" value={`${Math.round(summary.withAudit / Math.max(summary.totalPositions, 1) * 100)}%`} sub={`${summary.withAudit}/${summary.totalPositions}`} tone="neutral" />
                 <KPI label="Bug bounty %" value={`${Math.round(summary.bounty / Math.max(summary.totalPositions, 1) * 100)}%`} sub={`${summary.bounty}/${summary.totalPositions}`} tone="neutral" />
                 <KPI label="Hacked %" value={`${Math.round(summary.hacked / Math.max(summary.totalPositions, 1) * 100)}%`} sub={`${summary.hacked} historic`} tone={summary.hacked > 0 ? "warn" : "good"} />
-                <KPI label="Low risk" value={summary.bandsLow.toString()} sub="positions" tone="good" />
+                {RISK_SCORES_LIVE && <KPI label="Low risk" value={summary.bandsLow.toString()} sub="positions" tone="good" />}
               </div>
             </section>
 
@@ -258,14 +261,14 @@ export default function LPReport() {
 
             {/* Risk register */}
             <section>
-              <div className="text-[11px] uppercase tracking-[0.12em] text-primary font-bold mb-3">Risk register — every position</div>
+              <div className="text-[11px] uppercase tracking-[0.12em] text-primary font-bold mb-3">{RISK_SCORES_LIVE ? "Risk register" : "Position register"}: every position</div>
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-white/[0.1]">
                     <th className="py-2 pr-3">Protocol</th>
                     <th className="py-2 pr-3">Sector</th>
                     <th className="py-2 pr-3 text-right">TVL</th>
-                    <th className="py-2 pr-3 text-center">Risk</th>
+                    {RISK_SCORES_LIVE && <th className="py-2 pr-3 text-center">Risk</th>}
                     <th className="py-2 pr-3 text-center">Findings</th>
                     <th className="py-2 pr-3">Last audit</th>
                     <th className="py-2 text-center">Posture</th>
@@ -282,7 +285,7 @@ export default function LPReport() {
                       </td>
                       <td className="py-2 pr-3 text-muted-foreground">{r.category || "—"}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{compactUsd(r.tvl)}</td>
-                      <td className="py-2 pr-3 text-center">
+                      {RISK_SCORES_LIVE && <td className="py-2 pr-3 text-center">
                         {r.score != null ? (
                           <span className={`inline-block text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border ${
                             r.band === "critical" ? "bg-rose-500/20 text-rose-200 border-rose-500/40" :
@@ -291,7 +294,7 @@ export default function LPReport() {
                             "bg-emerald-500/15 text-emerald-200 border-emerald-500/30"
                           }`}>{r.score} · {r.band}</span>
                         ) : <span className="text-muted-foreground">—</span>}
-                      </td>
+                      </td>}
                       <td className="py-2 pr-3 text-center text-[11px]">
                         {r.critical + r.high === 0 ? <span className="text-muted-foreground/40">—</span> : (
                           <span className="font-bold">
@@ -342,8 +345,8 @@ export default function LPReport() {
             <section className="text-[10px] text-muted-foreground border-t border-white/[0.06] pt-4">
               <div className="font-bold text-muted-foreground/80 uppercase tracking-wider mb-1">Methodology</div>
               <p className="leading-relaxed">
-                Risk scores are computed nightly from audit posture (cadence, findings, firm diversity), on-chain activity (TVL trajectory, anomalies, contract upgradability),
-                team activity (hiring momentum, GitHub commits), funding signals, and sentiment. Open findings are AI-extracted from public audit reports. TVL via DefiLlama.
+                {RISK_SCORES_LIVE && <>Risk scores are computed nightly from audit posture (cadence, findings, firm diversity), on-chain activity (TVL trajectory, anomalies, contract upgradability),
+                team activity (hiring momentum, GitHub commits), funding signals, and sentiment. </>}Open findings are AI-extracted from public audit reports. TVL via DefiLlama.
                 Hack history via DefiLlama. News via Exa.ai. Audit corpus combines GitHub repos, Cantina, Sherlock, Code4rena, and direct firm scrapes.
               </p>
             </section>

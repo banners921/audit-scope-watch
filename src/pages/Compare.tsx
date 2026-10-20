@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import { GitCompare, X, Plus, Search, TrendingUp, TrendingDown, Minus, Skull, Bug, ShieldCheck, Briefcase, Coins, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { RISK_SCORES_LIVE } from "@/lib/riskScores";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const MAX_COMPARE = 6;
@@ -108,7 +109,9 @@ export default function Compare() {
     queryFn: async (): Promise<ProtocolSnapshot[]> => {
       const [comp, risk, audits, findings, contracts, tvl, hiring, hacks, anom] = await Promise.all([
         supabase.from("companies").select("slug,name,category,url,logo,has_been_hacked,has_bug_bounty,last_audit_date,last_audit_firm,audit_count,unique_auditor_count,total_raised_usd").in("slug", slugs),
-        supabase.from("protocol_risk_scores").select("company_slug,composite_score,band,sub_audit,sub_onchain,sub_activity,sub_team,sub_funding,coverage_pct").in("company_slug", slugs),
+        RISK_SCORES_LIVE
+          ? supabase.from("protocol_risk_scores").select("company_slug,composite_score,band,sub_audit,sub_onchain,sub_activity,sub_team,sub_funding,coverage_pct").in("company_slug", slugs)
+          : Promise.resolve({ data: [] as any[] }),
         supabase.from("audit_history").select("company_slug,audit_firm,audit_date,findings_critical,findings_high,findings_medium").in("company_slug", slugs),
         supabase.from("audit_history").select("company_slug,findings_critical,findings_high,findings_medium").in("company_slug", slugs).eq("findings_extraction_status", "extracted"),
         supabase.from("chain_addresses").select("company_slug,chain,proxy_pattern").in("company_slug", slugs),
@@ -235,7 +238,7 @@ export default function Compare() {
   // Sector medians for "rank vs sector" context
   const sectorMediansQ = useQuery({
     queryKey: ["compare-sector-medians", snapshots.map(s => s.category).join(",")],
-    enabled: snapshots.length > 0,
+    enabled: RISK_SCORES_LIVE && snapshots.length > 0,
     queryFn: async () => {
       const cats = Array.from(new Set(snapshots.map(s => s.category).filter(Boolean))) as string[];
       if (cats.length === 0) return new Map<string, { score: number; n: number }>();
@@ -386,6 +389,7 @@ export default function Compare() {
                 </tr>
               </thead>
               <tbody>
+                {RISK_SCORES_LIVE && <>
                 <SectionRow label="Risk profile" />
                 <Row label="Composite risk" snapshots={snapshots} render={(s) => (
                   <span className="inline-flex items-center gap-1.5">
@@ -414,6 +418,7 @@ export default function Compare() {
                 <Row label="Activity" snapshots={snapshots} render={(s) => <SubScore v={s.sub_activity} />} />
                 <Row label="Team" snapshots={snapshots} render={(s) => <SubScore v={s.sub_team} />} />
                 <Row label="Funding" snapshots={snapshots} render={(s) => <SubScore v={s.sub_funding} />} />
+                </>}
 
                 <SectionRow label="Audit posture" />
                 <Row label="Last audit" snapshots={snapshots} render={(s) => (
