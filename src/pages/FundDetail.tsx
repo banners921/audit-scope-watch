@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Globe, Twitter, Linkedin, TrendingUp, Building2, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/fetchAll";
 import { normalizeTwitterUrl } from "@/lib/format";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { ViewToggle, type ViewMode } from "@/components/ViewToggle";
@@ -80,16 +81,17 @@ export default function FundDetail() {
         `other_investors.ilike.%${safe}%`,
         `all_investors.ilike.%${safe}%`,
       ].join(",");
-      const { data, error } = await supabase
+      // Every matching round: the stats above are totals.
+      const rows = await fetchAll((from, to) => supabase
         .from("funding_rounds")
         .select(
           "id,company_slug,company_name,round_type,amount_usd,date,lead_investors,other_investors,all_investors,announcement_url,category",
         )
         .or(orParts)
         .order("date", { ascending: false, nullsFirst: false })
-        .limit(500);
-      if (error) throw error;
-      return (data || []) as FundingRoundRow[];
+        .order("id")
+        .range(from, to));
+      return rows as FundingRoundRow[];
     },
   });
 
@@ -158,7 +160,7 @@ export default function FundDetail() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
           <Stat label="Rounds tracked" value={numRounds} icon={<TrendingUp className="w-3.5 h-3.5" />} accent="text-white" />
           <Stat label="Portfolio companies" value={numPortcos} icon={<Building2 className="w-3.5 h-3.5" />} accent="text-white" />
-          <Stat label="Total deployed (sum)" value={fmtAmount(totalDeployed)} accent="text-teal-400" />
+          <Stat label="Raised in rounds joined" value={fmtAmount(totalDeployed)} accent="text-teal-400" />
         </div>
       </div>
 

@@ -118,7 +118,7 @@ export default function OpenFindings() {
       const [comp, audits, tvl] = await Promise.all([
         supabase.from("companies").select("slug,name,url,logo,category").in("slug", distinctSlugs),
         supabase.from("audit_history").select("id,company_slug,audit_firm,audit_date,report_url").in("company_slug", distinctSlugs),
-        supabase.from("protocol_metrics").select("company_slug,tvl,date").in("company_slug", distinctSlugs).not("tvl", "is", null).order("date", { ascending: false }).limit(2000),
+        supabase.from("protocol_metrics").select("company_slug,tvl:tvl_usd,date").in("company_slug", distinctSlugs).not("tvl_usd", "is", null).order("date", { ascending: false }).limit(2000),
       ]);
       const compMap = new Map<string, any>();
       for (const c of (comp.data ?? []) as any[]) compMap.set(c.slug, c);

@@ -171,7 +171,7 @@ export default function Onboarding() {
                 <input
                   value={fundQuery}
                   onChange={(e) => setFundQuery(e.target.value)}
-                  placeholder="Search 5,200+ funds by name…"
+                  placeholder="Search funds by name…"
                   className="as-input text-sm"
                   autoFocus
                 />

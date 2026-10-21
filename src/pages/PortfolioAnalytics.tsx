@@ -64,7 +64,7 @@ export default function PortfolioAnalytics() {
     enabled: positionSlugs.length > 0,
     queryFn: async () => {
       const [tvl, risk, comp, chains, rounds] = await Promise.all([
-        supabase.from("protocol_metrics").select("company_slug,tvl,date").in("company_slug", positionSlugs).not("tvl", "is", null).order("date", { ascending: false }).limit(2000),
+        supabase.from("protocol_metrics").select("company_slug,tvl:tvl_usd,date").in("company_slug", positionSlugs).not("tvl_usd", "is", null).order("date", { ascending: false }).limit(2000),
         RISK_SCORES_LIVE
           ? supabase.from("protocol_risk_scores").select("company_slug,composite_score,band").in("company_slug", positionSlugs)
           : Promise.resolve({ data: [] as any[] }),

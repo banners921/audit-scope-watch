@@ -115,7 +115,7 @@ export default function Compare() {
         supabase.from("audit_history").select("company_slug,audit_firm,audit_date,findings_critical,findings_high,findings_medium").in("company_slug", slugs),
         supabase.from("audit_history").select("company_slug,findings_critical,findings_high,findings_medium").in("company_slug", slugs).eq("findings_extraction_status", "extracted"),
         supabase.from("chain_addresses").select("company_slug,chain,proxy_pattern").in("company_slug", slugs),
-        supabase.from("protocol_metrics").select("company_slug,tvl,date").in("company_slug", slugs).not("tvl", "is", null).order("date", { ascending: false }).limit(3000),
+        supabase.from("protocol_metrics").select("company_slug,tvl:tvl_usd,date").in("company_slug", slugs).not("tvl_usd", "is", null).order("date", { ascending: false }).limit(3000),
         supabase.from("hiring_aggregates").select("company_slug,role_count,smart_contract_count").in("company_slug", slugs),
         supabase.from("hacks").select("company_slug,amount_usd").in("company_slug", slugs),
         supabase.from("metric_anomalies").select("company_slug,z_score,date").in("company_slug", slugs).order("date", { ascending: false }).limit(500),

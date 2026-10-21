@@ -10,6 +10,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, LineChart, Line, Legend,
 } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/fetchAll";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandLogo } from "@/components/BrandLogo";
 import { canonicalCategory } from "@/lib/categories";
@@ -98,11 +99,11 @@ export default function FundAnalytics() {
     enabled: !!fundSlug,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data } = await supabase
+      // Every row: the KPIs and charts are totals.
+      return await fetchAll<Position>((from, to) => supabase
         .from("fund_portfolio")
         .select("company_slug,company_name,category,round_type,amount_usd,round_date")
-        .eq("fund_slug", fundSlug!);
-      return (data ?? []) as Position[];
+        .eq("fund_slug", fundSlug!).order("company_slug").order("round_date").range(from, to));
     },
   });
 
@@ -112,10 +113,10 @@ export default function FundAnalytics() {
     queryKey: ["analytics-comps", portfolioSlugs.length, portfolioSlugs.slice(0, 5).join(",")],
     enabled: portfolioSlugs.length > 0,
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAll((from, to) => supabase
         .from("companies")
         .select("slug,name,logo,url,total_raised_usd,has_been_hacked,has_bug_bounty,last_audit_date,category")
-        .in("slug", portfolioSlugs);
+        .in("slug", portfolioSlugs).order("slug").range(from, to));
       const m = new Map<string, any>();
       for (const c of (data ?? []) as any[]) m.set(c.slug, c);
       return m;
@@ -126,11 +127,10 @@ export default function FundAnalytics() {
     queryKey: ["analytics-audits", portfolioSlugs.length, portfolioSlugs.slice(0, 5).join(",")],
     enabled: portfolioSlugs.length > 0,
     queryFn: async () => {
-      const { data } = await supabase
+      return await fetchAll((from, to) => supabase
         .from("audit_history")
-        .select("company_slug,audit_firm,audit_date,findings_critical,findings_high,findings_medium,findings_low")
-        .in("company_slug", portfolioSlugs);
-      return (data ?? []) as any[];
+        .select("id,company_slug,audit_firm,audit_date,findings_critical,findings_high,findings_medium,findings_low")
+        .in("company_slug", portfolioSlugs).order("id").range(from, to));
     },
   });
 
@@ -138,11 +138,10 @@ export default function FundAnalytics() {
     queryKey: ["analytics-hacks", portfolioSlugs.length, portfolioSlugs.slice(0, 5).join(",")],
     enabled: portfolioSlugs.length > 0,
     queryFn: async () => {
-      const { data } = await supabase
+      return await fetchAll((from, to) => supabase
         .from("hacks")
-        .select("company_slug,name,hack_date,amount_usd,technique")
-        .in("company_slug", portfolioSlugs);
-      return (data ?? []) as any[];
+        .select("id,company_slug,name,hack_date,amount_usd,technique")
+        .in("company_slug", portfolioSlugs).order("id").range(from, to));
     },
   });
 
@@ -352,14 +351,14 @@ export default function FundAnalytics() {
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Kpi label="Positions" value={String(kpis.positions)} />
-        <Kpi label="Total deployed" value={compactUsd(kpis.totalDeployed)} accent />
+        <Kpi label="Raised in rounds joined" value={compactUsd(kpis.totalDeployed)} accent />
         <Kpi label="Rounds" value={String(kpis.rounds)} />
         <Kpi label="Audited coverage" value={`${kpis.auditedPct}%`} sub={`${kpis.audited} of ${kpis.positions}`} />
         <Kpi label="Hack exposure" value={String(kpis.hacked)} sub={kpis.hacked === 1 ? "company" : "companies"} tone={kpis.hacked > 0 ? "alert" : "neutral"} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-        <Widget id="monthly" title="Funding deployed over time" icon={<BarChart3 className="w-3.5 h-3.5" />} sub="Sum of round amounts per period"
+        <Widget id="monthly" title="Rounds joined over time" icon={<BarChart3 className="w-3.5 h-3.5" />} sub="Total size of rounds the fund joined, per period (not the fund's own cheque)"
           sizeClass={widthCls("monthly")}
           cfg={cfg.monthly} updateCfg={(p) => updateCfg("monthly", p)}
           configRender={() => <BucketField cfg={cfg.monthly} updateCfg={(p) => updateCfg("monthly", p)} />}>
@@ -382,7 +381,7 @@ export default function FundAnalytics() {
           )}
         </Widget>
 
-        <Widget id="cumulative" title="Cumulative deployed" icon={<TrendingUp className="w-3.5 h-3.5" />} sub="Total committed over time"
+        <Widget id="cumulative" title="Cumulative round size" icon={<TrendingUp className="w-3.5 h-3.5" />} sub="Running total of round sizes the fund joined"
           sizeClass={widthCls("cumulative")}
           cfg={cfg.cumulative} updateCfg={(p) => updateCfg("cumulative", p)}
           configRender={() => (
@@ -514,7 +513,7 @@ export default function FundAnalytics() {
           <PieWithLegend data={bountyCoverage.map(d => ({ name: d.name, value: d.value, color: d.color }))} valueLabel={(v) => `${v} co${v === 1 ? "" : "s"}`} />
         </Widget>
 
-        <Widget id="biggest" title="Biggest raises (your tickets)" icon={<Banknote className="w-3.5 h-3.5" />} sub="Largest amounts the fund participated in"
+        <Widget id="biggest" title="Biggest rounds joined" icon={<Banknote className="w-3.5 h-3.5" />} sub="Largest rounds the fund participated in (full round size)"
           sizeClass={widthCls("biggest")} cfg={cfg.biggest} updateCfg={(p) => updateCfg("biggest", p)}
           configRender={() => <LimitField label="Show" cfg={cfg.biggest} updateCfg={(p) => updateCfg("biggest", p)} options={[5, 8, 10, 15, 25]} />}>
           {biggestRaises.length === 0 ? <EmptyChart /> : (

@@ -262,7 +262,9 @@ export default function BugBounties() {
                     ) : null;
                   })()}
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground border-t border-white/[0.04] pt-2 mt-auto">
-                    {b.is_active === false ? <span className="text-rose-300 inline-flex items-center gap-1">● Inactive</span> : <span className="text-emerald-300 inline-flex items-center gap-1">● Active</span>}
+                    {b.is_active === false ? <span className="text-rose-300 inline-flex items-center gap-1">● Inactive</span>
+                      : b.is_active === true ? <span className="text-emerald-300 inline-flex items-center gap-1">● Active</span>
+                      : <span className="text-muted-foreground inline-flex items-center gap-1">● Status unknown</span>}
                     <span className="ml-auto">{b.last_updated ? `updated ${tightAgo(b.last_updated)}` : "—"}</span>
                     {b.program_url && (
                       <a href={b.program_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

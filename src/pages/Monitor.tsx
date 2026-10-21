@@ -6,6 +6,7 @@ import {
   AlertTriangle, ArrowRight, Crosshair, Sparkles,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/fetchAll";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandLogo } from "@/components/BrandLogo";
 import { SaveTargetButton } from "@/components/SaveTargetButton";
@@ -144,11 +145,14 @@ export default function Monitor() {
       const since = new Date(Date.now() - 30 * 86400000).toISOString();
       const sinceDate = since.slice(0, 10);
       const [news, hacks, audits, hiring, raises] = await Promise.all([
-        supabase.from("news_items").select("company_slug,published_at,title,url,sentiment").gte("published_at", since).in("company_slug", companySlugs).order("published_at", { ascending: false }).limit(200),
-        supabase.from("hacks").select("company_slug,name,hack_date,amount_usd,technique,source_url,summary").gte("hack_date", sinceDate).in("company_slug", companySlugs).order("hack_date", { ascending: false }).limit(60),
-        supabase.from("audit_history").select("company_slug,audit_firm,audit_date,report_url").gte("audit_date", sinceDate).in("company_slug", companySlugs).order("audit_date", { ascending: false }).limit(60),
-        supabase.from("account_signals").select("company_slug,signal_type,signal_subtype,title,detail,evidence_url,fired_at").gte("fired_at", since).in("company_slug", companySlugs).order("fired_at", { ascending: false }).limit(80),
-        supabase.from("funding_rounds").select("company_slug,company_name,amount_usd,round_type,date").gte("date", sinceDate).in("company_slug", companySlugs).order("date", { ascending: false }).limit(60),
+        // Every row in the 30-day window: the per-company pips and the totals
+        // below are counts, so a capped query would undercount them.
+        fetchAll((from, to) => supabase.from("news_items").select("id,company_slug,published_at,title,url,sentiment").gte("published_at", since).in("company_slug", companySlugs).order("published_at", { ascending: false }).order("id").range(from, to)).then((data) => ({ data })),
+        fetchAll((from, to) => supabase.from("hacks").select("id,company_slug,name,hack_date,amount_usd,technique,source_url,summary").gte("hack_date", sinceDate).in("company_slug", companySlugs).order("hack_date", { ascending: false }).order("id").range(from, to)).then((data) => ({ data })),
+        fetchAll((from, to) => supabase.from("audit_history").select("id,company_slug,audit_firm,audit_date,report_url").gte("audit_date", sinceDate).in("company_slug", companySlugs).order("audit_date", { ascending: false }).order("id").range(from, to)).then((data) => ({ data })),
+        // Hiring pip counts hiring signals only (account_signals also holds multisig and audit signals).
+        fetchAll((from, to) => supabase.from("account_signals").select("id,company_slug,signal_type,signal_subtype,title,detail,evidence_url,fired_at").eq("signal_type", "hiring").gte("fired_at", since).in("company_slug", companySlugs).order("fired_at", { ascending: false }).order("id").range(from, to)).then((data) => ({ data })),
+        fetchAll((from, to) => supabase.from("funding_rounds").select("id,company_slug,company_name,amount_usd,round_type,date").gte("date", sinceDate).in("company_slug", companySlugs).order("date", { ascending: false }).order("id").range(from, to)).then((data) => ({ data })),
       ]);
       const perSlug = new Map<string, { news: number; hacks: number; audits: number; hiring: number; raises: number }>();
       const bump = (slug: string, k: keyof { news: number; hacks: number; audits: number; hiring: number; raises: number }) => {
@@ -168,6 +172,10 @@ export default function Monitor() {
   });
 
   // Activity feed (combined; portfolio-watched only)
+  // Totals use the full 30-day results; the feed below shows only the latest 80.
+  const activityTotal = companySignalsQ.data
+    ? Object.values(companySignalsQ.data.items).reduce((n, arr) => n + (arr as any[]).length, 0)
+    : 0;
   const activity = useMemo(() => {
     const sig = companySignalsQ.data;
     if (!sig) return [] as any[];
@@ -309,11 +317,11 @@ export default function Monitor() {
                         <BrandLogo name={s.company_name || s.company_slug} className="w-9 h-9 rounded-md shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold text-white truncate group-hover:text-primary">{s.company_name || s.company_slug}</div>
-                          <div className="text-[10px] text-muted-foreground/80 truncate">{f?.audited_protocols ?? 0} clients · {f?.total_audits ?? 0} audits</div>
+                          {f && <div className="text-[10px] text-muted-foreground/80 truncate">{f.audited_protocols ?? 0} clients · {f.total_audits ?? 0} audits</div>}
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-1 text-center pt-1.5 border-t border-white/[0.04]">
-                        <SigPip label="Audits" value={f?.total_audits ?? 0} />
+                        <SigPip label="Audits" value={f ? (f.total_audits ?? 0) : "—"} />
                         <SigPip label="Avg find" value={f?.avg_findings != null ? Number(f.avg_findings).toFixed(1) : "—"} />
                         <SigPip label="High sev" value={f?.avg_high_severity != null ? Number(f.avg_high_severity).toFixed(1) : "—"} />
                       </div>
@@ -334,7 +342,7 @@ export default function Monitor() {
             <div className="px-3 py-2 border-b border-white/[0.06] bg-white/[0.02] flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-primary" />
               <h3 className="text-[11px] font-semibold text-white uppercase tracking-wider">Live activity</h3>
-              <span className="text-[10px] text-muted-foreground ml-auto">{activity.length} · 30d</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">{activityTotal > activity.length ? `latest ${activity.length} of ${activityTotal}` : activityTotal} · 30d</span>
             </div>
             {companySignalsQ.isLoading ? (
               <div className="px-3 py-6 text-center text-[11px] text-muted-foreground">Loading activity…</div>
@@ -376,11 +384,11 @@ export default function Monitor() {
               Quick insights
             </div>
             <div className="space-y-1.5 text-[11.5px]">
-              <Insight tone="alert" icon={<Skull className="w-3 h-3" />} label="Hack alerts" value={activity.filter(a => a.kind === "hack").length} />
-              <Insight tone="good" icon={<ShieldCheck className="w-3 h-3" />} label="Fresh audits" value={activity.filter(a => a.kind === "audit").length} />
-              <Insight tone="warn" icon={<Banknote className="w-3 h-3" />} label="New raises" value={activity.filter(a => a.kind === "raise").length} />
-              <Insight tone="neutral" icon={<Briefcase className="w-3 h-3" />} label="Hiring signals" value={activity.filter(a => a.kind === "hiring").length} />
-              <Insight tone="neutral" icon={<Newspaper className="w-3 h-3" />} label="News items" value={activity.filter(a => a.kind === "news").length} />
+              <Insight tone="alert" icon={<Skull className="w-3 h-3" />} label="Hack alerts" value={companySignalsQ.data?.items.hacks.length ?? 0} />
+              <Insight tone="good" icon={<ShieldCheck className="w-3 h-3" />} label="Fresh audits" value={companySignalsQ.data?.items.audits.length ?? 0} />
+              <Insight tone="warn" icon={<Banknote className="w-3 h-3" />} label="New raises" value={companySignalsQ.data?.items.raises.length ?? 0} />
+              <Insight tone="neutral" icon={<Briefcase className="w-3 h-3" />} label="Hiring signals" value={companySignalsQ.data?.items.hiring.length ?? 0} />
+              <Insight tone="neutral" icon={<Newspaper className="w-3 h-3" />} label="News items" value={companySignalsQ.data?.items.news.length ?? 0} />
             </div>
           </div>
         </div>

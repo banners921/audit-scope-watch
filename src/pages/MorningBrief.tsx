@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip as ReTooltip, LineChart, Line } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/fetchAll";
 import { RISK_SCORES_LIVE } from "@/lib/riskScores";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useAuth } from "@/hooks/useAuth";
@@ -131,10 +132,10 @@ export default function MorningBrief() {
     enabled: slugs.length > 0,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-      const { data } = await supabase
+      const data = await fetchAll((from, to) => supabase
         .from("protocol_metrics").select("company_slug,tvl_usd,date")
         .in("company_slug", slugs).not("tvl_usd", "is", null).gte("date", cutoff)
-        .order("date", { ascending: false }).limit(5000);
+        .order("date", { ascending: false }).order("company_slug").range(from, to));
       const latestBySlug = new Map<string, number>();
       let aggregate = 0;
       for (const r of (data ?? []) as any[]) {
@@ -194,7 +195,7 @@ export default function MorningBrief() {
     queryKey: ["mb-findings", slugs.length, fundSlug],
     enabled: slugs.length > 0,
     queryFn: async () => {
-      const { data } = await supabase.from("audit_findings_detail").select("company_slug,severity,status").in("company_slug", slugs).limit(8000);
+      const data = await fetchAll((from, to) => supabase.from("audit_findings_detail").select("id,company_slug,severity,status").in("company_slug", slugs).order("id").range(from, to));
       const isOpen = (s: string) => !["fixed", "resolved", "remediated", "acknowledged", "won't fix", "wontfix"].includes((s || "").toLowerCase());
       const m = new Map<string, { critical: number; high: number }>();
       let totalC = 0, totalH = 0;

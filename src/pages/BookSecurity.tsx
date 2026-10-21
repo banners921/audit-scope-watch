@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ShieldCheck, AlertTriangle, Clock, Skull, ArrowRight, Calendar } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, Cell, PieChart, Pie, Legend } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/fetchAll";
 import { RISK_SCORES_LIVE } from "@/lib/riskScores";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BookTabs } from "@/components/BookTabs";
@@ -32,10 +33,9 @@ export default function BookSecurity() {
     queryKey: ["bsec-findings", slugs.length],
     enabled: slugs.length > 0,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("audit_findings_detail").select("company_slug,severity,status,title,audit_id,created_at")
-        .in("company_slug", slugs).limit(8000);
-      return (data ?? []) as any[];
+      return await fetchAll((from, to) => supabase
+        .from("audit_findings_detail").select("id,company_slug,severity,status,title,audit_id,created_at")
+        .in("company_slug", slugs).order("id").range(from, to));
     },
   });
 
@@ -56,8 +56,8 @@ export default function BookSecurity() {
     enabled: slugs.length > 0,
     queryFn: async () => {
       const { data } = await supabase
-        .from("protocol_metrics").select("company_slug,tvl,date")
-        .in("company_slug", slugs).not("tvl", "is", null).order("date", { ascending: false }).limit(2000);
+        .from("protocol_metrics").select("company_slug,tvl:tvl_usd,date")
+        .in("company_slug", slugs).not("tvl_usd", "is", null).order("date", { ascending: false }).limit(2000);
       const m = new Map<string, number>();
       for (const r of (data ?? []) as any[]) if (!m.has(r.company_slug)) m.set(r.company_slug, Number(r.tvl));
       return m;

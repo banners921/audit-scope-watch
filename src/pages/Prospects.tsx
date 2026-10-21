@@ -102,7 +102,7 @@ export default function Prospects() {
         supabase.from("protocol_risk_scores").select("company_slug,composite_score,band,coverage_pct").in("company_slug", slugs),
         supabase.from("audit_history").select("company_slug,audit_firm,audit_date,findings_critical,findings_high").in("company_slug", slugs).order("audit_date", { ascending: false, nullsFirst: false }),
         supabase.from("metric_anomalies").select("company_slug,z_score,direction,date").in("company_slug", slugs).order("date", { ascending: false }).limit(500),
-        supabase.from("protocol_metrics").select("company_slug,tvl,date").in("company_slug", slugs).not("tvl", "is", null).order("date", { ascending: false }).limit(2000),
+        supabase.from("protocol_metrics").select("company_slug,tvl:tvl_usd,date").in("company_slug", slugs).not("tvl_usd", "is", null).order("date", { ascending: false }).limit(2000),
         supabase.from("funding_rounds").select("company_slug,amount_usd,date,round_type").in("company_slug", slugs).order("date", { ascending: false, nullsFirst: false }).limit(2000),
         supabase.from("hiring_aggregates").select("company_slug,role_count,smart_contract_count,security_count").in("company_slug", slugs),
         supabase.from("chain_addresses").select("company_slug,chain,proxy_pattern").in("company_slug", slugs),

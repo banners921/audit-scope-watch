@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { AuditTypeBadge } from "@/components/AuditTypeBadge";
 
 type RepoRow = {
+  findings_extraction_status?: string | null;
   id: string;
   audit_firm: string | null;
   audit_date: string | null;
@@ -92,7 +93,7 @@ export default function AuditedRepos() {
       for (let from = 0; from < 50000; from += PAGE) {
         const { data, error } = await supabase
           .from("audit_history")
-          .select("id,audit_firm,audit_date,audit_type,protocol_name,company_slug,company_logo_safe,report_url,audited_repo_url,audited_commit_hash,commit_hash_status,repo_url_status,org_url_status,audited_files,audited_chains,smart_contract_language,findings_critical,findings_high,findings_medium,findings_low,ai_summary")
+          .select("id,audit_firm,audit_date,audit_type,protocol_name,company_slug,company_logo_safe,report_url,audited_repo_url,audited_commit_hash,commit_hash_status,repo_url_status,org_url_status,audited_files,audited_chains,smart_contract_language,findings_critical,findings_high,findings_medium,findings_low,ai_summary,findings_extraction_status")
           .not("audited_repo_url", "is", null)
           .order("audit_date", { ascending: false, nullsFirst: false })
           .range(from, from + PAGE - 1);
@@ -269,6 +270,8 @@ export default function AuditedRepos() {
               const chains = Array.isArray(r.audited_chains) ? r.audited_chains : [];
               const c = Number(r.findings_critical ?? 0), h = Number(r.findings_high ?? 0), m = Number(r.findings_medium ?? 0), l = Number(r.findings_low ?? 0);
               const totalFindings = c + h + m + l;
+              // Unscored audits default to 0/0/0/0: that is "not read yet", not "clean".
+              const scored = String(r.findings_extraction_status ?? "").startsWith("extracted");
               return (
                 <div key={r.id} className="as-card p-3.5 flex flex-col gap-2.5">
                   {/* Header: firm + date */}
@@ -352,7 +355,9 @@ export default function AuditedRepos() {
 
                   {/* Findings strip */}
                   <div className="flex items-center gap-2 text-[10px] mt-auto pt-2 border-t border-white/[0.04]">
-                    {totalFindings === 0 ? (
+                    {!scored ? (
+                      <span className="text-muted-foreground">Severity pending</span>
+                    ) : totalFindings === 0 ? (
                       <span className="text-emerald-300">No findings recorded</span>
                     ) : (
                       <>

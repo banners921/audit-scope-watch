@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { RISK_SCORES_LIVE } from "@/lib/riskScores";
+import { fetchAll } from "@/lib/fetchAll";
 import {
   FileText, Shield, Users, Layers, ShieldCheck, Coins,
   Calendar, Download, Printer, ArrowRight, Skull, ExternalLink,
@@ -477,11 +477,11 @@ function CoInvestorLive({ tf, fundSlugs }: { tf: Timeframe; fundSlugs: string[] 
     enabled: fundSlugs.length > 0,
     queryFn: async () => {
       const since = tfStart(tf);
-      const { data: portfolio } = await supabase
+      const portfolio = await fetchAll((from, to) => supabase
         .from("fund_portfolio")
         .select("fund_slug,company_slug,round_date")
         .in("fund_slug", fundSlugs)
-        .gte("round_date", since);
+        .gte("round_date", since).order("fund_slug").order("company_slug").order("round_date").range(from, to));
       const portfolioBySlug = new Map<string, Set<string>>();
       for (const r of (portfolio ?? []) as any[]) {
         if (!portfolioBySlug.has(r.company_slug)) portfolioBySlug.set(r.company_slug, new Set());
@@ -489,10 +489,10 @@ function CoInvestorLive({ tf, fundSlugs }: { tf: Timeframe; fundSlugs: string[] 
       }
       const companySlugs = Array.from(portfolioBySlug.keys());
       if (companySlugs.length === 0) return { coinvestors: [], total_deals: 0, unique_companies: 0 };
-      const { data: rounds } = await supabase
+      const rounds = await fetchAll((from, to) => supabase
         .from("funding_rounds")
-        .select("company_slug,all_investors,date,category")
-        .in("company_slug", companySlugs);
+        .select("id,company_slug,all_investors,date,category")
+        .in("company_slug", companySlugs).order("id").range(from, to));
       const coinvestorCounts = new Map<string, { name: string; shared_deals: number; companies: Set<string>; sectors: Set<string> }>();
       const ourFundNames = new Set(fundSlugs.map(s => s.toLowerCase().replace(/-/g, " ")));
       for (const r of (rounds ?? []) as any[]) {
@@ -564,7 +564,7 @@ function FundCompareLive({ tf, fundSlugs }: { tf: Timeframe; fundSlugs: string[]
       const since = tfStart(tf);
       const [funds, portfolio] = await Promise.all([
         supabase.from("funds").select("slug,name,investment_count,website").in("slug", fundSlugs),
-        supabase.from("fund_portfolio").select("fund_slug,company_slug,category,amount_usd,round_date").in("fund_slug", fundSlugs).gte("round_date", since),
+        fetchAll((from, to) => supabase.from("fund_portfolio").select("fund_slug,company_slug,category,amount_usd,round_date").in("fund_slug", fundSlugs).gte("round_date", since).order("fund_slug").order("company_slug").order("round_date").range(from, to)).then((data) => ({ data })),
       ]);
       const fundMap = new Map<string, { slug: string; name: string; total_deals: number; categories: Map<string, number>; total_amount: number; recent_companies: Set<string> }>();
       for (const f of (funds.data ?? []) as any[]) {
@@ -632,10 +632,11 @@ function CategoryOverviewLive({ tf, categories }: { tf: Timeframe; categories: s
     queryFn: async () => {
       const since = tfStart(tf);
       const [companies, rounds, hacks, audits] = await Promise.all([
-        supabase.from("companies").select("slug,name,category,total_raised_usd,audit_count,last_audit_date,has_been_hacked,logo").in("category", categories).limit(500),
-        supabase.from("funding_rounds").select("company_slug,amount_usd,date,round_type,category").in("category", categories).gte("date", since),
-        supabase.from("hacks").select("company_slug,name,date,amount_usd").gte("date", since),
-        supabase.from("audit_history").select("company_slug,audit_date,audit_firm").gte("audit_date", since),
+        fetchAll((from, to) => supabase.from("companies").select("slug,name,category,total_raised_usd,audit_count,last_audit_date,has_been_hacked,logo").in("category", categories).order("slug").range(from, to)).then((data) => ({ data })),
+        fetchAll((from, to) => supabase.from("funding_rounds").select("id,company_slug,amount_usd,date,round_type,category").in("category", categories).gte("date", since).order("id").range(from, to)).then((data) => ({ data })),
+        // hacks.hack_date (there is no "date" column; the old select errored and every period showed 0 hacks)
+        fetchAll((from, to) => supabase.from("hacks").select("id,company_slug,name,date:hack_date,amount_usd").gte("hack_date", since).order("id").range(from, to)).then((data) => ({ data })),
+        fetchAll((from, to) => supabase.from("audit_history").select("id,company_slug,audit_date,audit_firm").gte("audit_date", since).order("id").range(from, to)).then((data) => ({ data })),
       ]);
       const cmps = (companies.data ?? []) as any[];
       const rds = (rounds.data ?? []) as any[];
@@ -726,8 +727,8 @@ function FundProfileLive({ tf, fundSlug }: { tf: Timeframe; fundSlug: string | n
       const since = tfStart(tf);
       const [fund, allPortfolio, tfPortfolio] = await Promise.all([
         supabase.from("funds").select("name,description,website,twitter,linkedin,investment_count,logo").eq("slug", fundSlug!).maybeSingle(),
-        supabase.from("fund_portfolio").select("company_slug,company_name,category,round_type,amount_usd,round_date").eq("fund_slug", fundSlug!),
-        supabase.from("fund_portfolio").select("company_slug,company_name,category,round_type,amount_usd,round_date").eq("fund_slug", fundSlug!).gte("round_date", since),
+        fetchAll((from, to) => supabase.from("fund_portfolio").select("company_slug,company_name,category,round_type,amount_usd,round_date").eq("fund_slug", fundSlug!).order("company_slug").order("round_date").range(from, to)).then((data) => ({ data })),
+        fetchAll((from, to) => supabase.from("fund_portfolio").select("company_slug,company_name,category,round_type,amount_usd,round_date").eq("fund_slug", fundSlug!).gte("round_date", since).order("company_slug").order("round_date").range(from, to)).then((data) => ({ data })),
       ]);
       const all = (allPortfolio.data ?? []) as any[];
       const tfRows = (tfPortfolio.data ?? []) as any[];
@@ -809,10 +810,10 @@ function MostActiveFundsLive({ tf }: { tf: Timeframe }) {
     queryKey: ["most-active-funds", tf],
     queryFn: async () => {
       const since = tfStart(tf);
-      const { data: rows } = await supabase
+      const rows = await fetchAll((from, to) => supabase
         .from("fund_portfolio")
         .select("fund_slug,company_slug,category,round_date,amount_usd")
-        .gte("round_date", since);
+        .gte("round_date", since).order("fund_slug").order("company_slug").order("round_date").range(from, to));
       const m = new Map<string, { deals: number; companies: Set<string>; cats: Map<string, number>; amount: number }>();
       for (const r of (rows ?? []) as any[]) {
         if (!m.has(r.fund_slug)) m.set(r.fund_slug, { deals: 0, companies: new Set(), cats: new Map(), amount: 0 });
@@ -879,8 +880,7 @@ function FundingRecapLive({ tf, categories }: { tf: Timeframe; categories: strin
       const since = tfStart(tf);
       let q = supabase.from("funding_rounds").select("company_slug,company_name,category,amount_usd,date,round_type,lead_investors,all_investors,announcement_url").gte("date", since);
       if (categories.length > 0) q = q.in("category", categories);
-      const { data } = await q.order("date", { ascending: false }).limit(500);
-      const rows = (data ?? []) as any[];
+      const rows = await fetchAll((from, to) => q.order("date", { ascending: false }).order("id").range(from, to));
       const investorCounts = new Map<string, number>();
       for (const r of rows) {
         const all = String(r.all_investors || "").split(/[,;|]+/).map(s => s.trim()).filter(Boolean);
@@ -990,23 +990,18 @@ function Kpi({ label, value, sub, tone = "neutral" }: { label: string; value: st
 }
 
 /* ============================================================================
- * TEMPLATE bodies (kept as-is — placeholders until real wiring lands)
+ * TEMPLATE bodies: not wired to data yet, so they show no numbers, only a note
+ * on what each will pull.
  * ========================================================================= */
 
 function RiskReportTemplate({ tf }: { tf: Timeframe }) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {RISK_SCORES_LIVE && <Kpi label="Portfolio risk score" value="6.4 / 10" sub="composite" tone="warn" />}
-        <Kpi label="Open criticals" value="3" sub="across 2 portcos" tone="alert" />
-        <Kpi label="Single-firm coverage" value="11" sub="audited by only 1 firm" tone="warn" />
-        <Kpi label="Hack exposure" value="$0" sub="no incidents in period" tone="good" />
-      </div>
       <TemplateNote tf={tf}>Will wire real `protocol_risk_scores` + `audit_history` + `hacks` per fund.</TemplateNote>
     </div>
   );
 }
-function QuarterlyTemplate({ tf }: { tf: Timeframe }) { return <div className="space-y-3"><Kpi label="New positions" value="3" /><TemplateNote tf={tf}>Will pull fund_portfolio + funding_rounds + audit_history + news_items.</TemplateNote></div>; }
+function QuarterlyTemplate({ tf }: { tf: Timeframe }) { return <div className="space-y-3"><TemplateNote tf={tf}>Will pull fund_portfolio + funding_rounds + audit_history + news_items.</TemplateNote></div>; }
 function SectorTemplate({ tf }: { tf: Timeframe }) { return <div className="space-y-3"><TemplateNote tf={tf}>Will pull companies.category + audit_history.audited_chains joined with fund_portfolio.</TemplateNote></div>; }
 function HackWatchTemplate({ tf }: { tf: Timeframe }) { return <div className="space-y-3"><TemplateNote tf={tf}>Will pull hacks table filtered to fund_portfolio.company_slug.</TemplateNote></div>; }
 function AuditCoverageTemplate({ tf }: { tf: Timeframe }) { return <div className="space-y-3"><TemplateNote tf={tf}>Will derive cadence from audit_history.audit_date per company; join GitHub commit deltas.</TemplateNote></div>; }

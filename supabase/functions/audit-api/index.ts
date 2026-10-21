@@ -95,6 +95,18 @@ const EXPOSED_TABLES: Record<string, { order_by: string; description: string }> 
   solodit_ingest_queue:       { order_by: "id",          description: "Solodit URLs queued for ingestion." },
 };
 
+// The REST layer returns at most 1,000 rows per request, so totals must page.
+async function fetchAllRows(page: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>, max = 200_000): Promise<any[]> {
+  const out: any[] = [];
+  for (let from = 0; from < max; from += 1000) {
+    const { data, error } = await page(from, from + 999);
+    if (error) throw error;
+    out.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -252,7 +264,7 @@ print("Done.")
   // v5 endpoints (kept verbatim for back-compat)
   // =============================================================================
   if (action === "firms") {
-    const { data: rows } = await admin.from("audit_history").select("audit_firm,audit_date,company_slug");
+    const rows = await fetchAllRows((from, to) => admin.from("audit_history").select("id,audit_firm,audit_date,company_slug").order("id").range(from, to));
     const m = new Map<string, { firm: string; audit_count: number; client_count: Set<string>; latest_audit: string | null }>();
     for (const r of (rows || []) as Array<{ audit_firm: string; audit_date: string | null; company_slug: string | null }>) {
       if (!r.audit_firm) continue;
@@ -286,10 +298,11 @@ print("Done.")
     if (!slug) return json(400, { error: "slug required" });
     const { data: company } = await admin.from("companies").select("slug,name,description,category,url,twitter,linkedin,logo,audit_count,last_audit_date,last_audit_firm,is_canonical,canonical_status").eq("slug", slug).maybeSingle();
     if (!company) return json(404, { error: "company not found" });
-    const { data: audits } = await admin.from("audit_history")
-      .select("id,audit_firm,audit_date,audit_type,report_url,smart_contract_language,findings_critical,findings_high,findings_medium,findings_low,audited_repo_url")
+    const { data: audits, count: auditTotal } = await admin.from("audit_history")
+      .select("id,audit_firm,audit_date,audit_type,report_url,smart_contract_language,findings_critical,findings_high,findings_medium,findings_low,audited_repo_url", { count: "exact" })
       .eq("company_slug", slug).order("audit_date", { ascending: false }).limit(100);
-    return json(200, { ok: true, company, audit_history: audits || [], audit_count: (audits || []).length });
+    // audit_count is the exact total; audit_history lists the newest 100.
+    return json(200, { ok: true, company, audit_history: audits || [], audit_count: auditTotal ?? (audits || []).length });
   }
 
   if (action === "audits-recent") {
@@ -333,10 +346,9 @@ print("Done.")
     if (!slug) return json(400, { error: "slug required" });
     const { data: firmRow } = await admin.from("audit_sources").select("firm_name").eq("slug", slug).maybeSingle();
     const firmName = firmRow?.firm_name || slug;
-    const { data: audits } = await admin.from("audit_history")
+    const rows = await fetchAllRows((from, to) => admin.from("audit_history")
       .select("id,company_slug,findings_critical,findings_high,findings_medium,findings_low,findings_informational,findings_gas,audit_date,audit_type")
-      .ilike("audit_firm", firmName);
-    const rows = audits || [];
+      .ilike("audit_firm", firmName).order("id").range(from, to));
     const clients = new Set<string>();
     let totalC = 0, totalH = 0, totalM = 0, totalL = 0, totalI = 0, totalG = 0;
     let earliest: string | null = null, latest: string | null = null;
@@ -393,10 +405,11 @@ print("Done.")
     if (!slug) return json(400, { error: "slug required" });
     const { data: fund } = await admin.from("funds").select("*").eq("slug", slug).maybeSingle();
     if (!fund) return json(404, { error: "fund not found" });
-    const { data: portfolio } = await admin.from("fund_portfolio")
-      .select("company_slug,company_name,category,round_type,amount_usd,round_date")
+    const { data: portfolio, count: portfolioTotal } = await admin.from("fund_portfolio")
+      .select("company_slug,company_name,category,round_type,amount_usd,round_date", { count: "exact" })
       .eq("fund_slug", slug).order("round_date", { ascending: false, nullsFirst: false }).limit(100);
-    return json(200, { ok: true, fund, portfolio: portfolio || [], portfolio_count: (portfolio || []).length });
+    // portfolio_count is the exact total; portfolio lists the newest 100.
+    return json(200, { ok: true, fund, portfolio: portfolio || [], portfolio_count: portfolioTotal ?? (portfolio || []).length });
   }
 
   if (action === "fund-portfolio") {

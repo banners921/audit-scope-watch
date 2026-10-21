@@ -35,6 +35,7 @@ export function CompanyGithubActivity({ githubUrls }: { githubUrls: string[] }) 
       let lastCommitDate: string | null = null;
       let lastCommitRepo: string | null = null;
       let reposWithData = 0;
+      let capped = false;
       const languages = new Set<string>();
       await Promise.all(
         repos.map(async (full) => {
@@ -55,6 +56,8 @@ export function CompanyGithubActivity({ githubUrls }: { githubUrls: string[] }) 
             if (!Array.isArray(arr)) return;
             reposWithData += 1;
             totalCommits += arr.length;
+            // One page of 100: a full page means there are more we did not count.
+            if (arr.length >= 100) capped = true;
             for (const c of arr) {
               const d = c.commit?.author?.date;
               if (d && (!lastCommitDate || d > lastCommitDate)) {
@@ -71,7 +74,8 @@ export function CompanyGithubActivity({ githubUrls }: { githubUrls: string[] }) 
         totalCommits,
         lastCommitDate,
         lastCommitRepo,
-        reposCount: reposWithData || repos.length,
+        reposCount: reposWithData,
+        capped,
         languages: Array.from(languages),
       };
     },
@@ -110,7 +114,9 @@ export function CompanyGithubActivity({ githubUrls }: { githubUrls: string[] }) 
       ) : (
         <div className="space-y-3 text-sm">
           <div className="font-mono text-lg text-white">
-            {q.data.totalCommits} total commits across {q.data.reposCount} repo{q.data.reposCount === 1 ? "" : "s"} in last {days} days
+            {q.data.reposCount === 0
+              ? "No commit data available"
+              : <>{q.data.totalCommits}{q.data.capped ? "+" : ""} commits across {q.data.reposCount} repo{q.data.reposCount === 1 ? "" : "s"} in last {days} days</>}
           </div>
           {q.data.lastCommitRepo && (
             <div className="text-xs text-muted-foreground">

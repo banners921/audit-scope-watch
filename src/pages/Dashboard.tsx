@@ -25,7 +25,7 @@ export default function Dashboard() {
     queryKey: ["dashboard-hub-stats"],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const [auditCnt, auditLast24, firmCnt, fundingCnt, fundingLast7, companyCnt, hackLast30] = await Promise.all([
+      const [auditCnt, auditLast24, firmCnt, fundingCnt, fundingLast7, companyCnt, hackLast30, fundCnt] = await Promise.all([
         supabase.from("audit_history").select("id", { count: "exact", head: true }),
         supabase.from("audit_history").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 24 * 3600000).toISOString()),
         supabase.from("audit_firm_meta").select("firm_name", { count: "exact", head: true }),
@@ -33,6 +33,7 @@ export default function Dashboard() {
         supabase.from("funding_rounds").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
         supabase.from("companies").select("slug", { count: "exact", head: true }),
         supabase.from("hacks").select("id", { count: "exact", head: true }).gte("hack_date", new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)),
+        supabase.from("funds").select("slug", { count: "exact", head: true }),
       ]);
       return {
         audits: auditCnt.count ?? 0,
@@ -42,6 +43,7 @@ export default function Dashboard() {
         funding_7d: fundingLast7.count ?? 0,
         companies: companyCnt.count ?? 0,
         hacks_30d: hackLast30.count ?? 0,
+        funds: fundCnt.count ?? 0,
       };
     },
   });
@@ -67,7 +69,8 @@ export default function Dashboard() {
           title="Audits"
           count={stats.data?.audits}
           countLabel="reports indexed"
-          ticker={stats.data?.audits_24h ? `${stats.data.audits_24h} new in last 24h` : "Live ingestion"}
+          ticker={stats.data ? `${stats.data.audits_24h.toLocaleString()} new in last 24h` : ""}
+          live
         />
         <HubCard
           to="/audit-firms"
@@ -83,7 +86,8 @@ export default function Dashboard() {
           title="Companies"
           count={stats.data?.companies}
           countLabel="protocols indexed"
-          ticker={stats.data?.hacks_30d ? `${stats.data.hacks_30d} hacks in last 30d` : "Live"}
+          ticker={stats.data ? `${stats.data.hacks_30d.toLocaleString()} hacks in last 30d` : ""}
+          live
         />
         <HubCard
           to="/funding-rounds"
@@ -91,15 +95,16 @@ export default function Dashboard() {
           title="Funding rounds"
           count={stats.data?.funding}
           countLabel="rounds tracked"
-          ticker={stats.data?.funding_7d ? `${stats.data.funding_7d} new this week` : "Live"}
+          ticker={stats.data ? `${stats.data.funding_7d.toLocaleString()} new this week` : ""}
+          live
         />
         <HubCard
           to="/funds"
           icon={<Wallet className="w-7 h-7" />}
           title="Funds"
-          count={undefined}
-          countLabel="Every crypto fund + portfolio"
-          ticker="5,000+ funds"
+          count={stats.data?.funds}
+          countLabel="funds tracked"
+          ticker="Portfolios and co-investors"
         />
       </div>
 
@@ -123,7 +128,7 @@ export default function Dashboard() {
 }
 
 function HubCard({
-  to, icon, title, count, countLabel, ticker,
+  to, icon, title, count, countLabel, ticker, live = false,
 }: {
   to: string;
   icon: React.ReactNode;
@@ -131,6 +136,8 @@ function HubCard({
   count?: number;
   countLabel: string;
   ticker: string;
+  /** Pulse dot only next to a real-time count, never next to descriptive text. */
+  live?: boolean;
 }) {
   return (
     <Link
@@ -149,10 +156,12 @@ function HubCard({
         ) : (
           <div className="text-[12.5px] text-muted-foreground mt-0.5">{countLabel}</div>
         )}
-        <div className="text-[11px] text-muted-foreground mt-2 inline-flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          {ticker}
-        </div>
+        {ticker && (
+          <div className="text-[11px] text-muted-foreground mt-2 inline-flex items-center gap-1.5">
+            {live && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+            {ticker}
+          </div>
+        )}
       </div>
       <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
     </Link>

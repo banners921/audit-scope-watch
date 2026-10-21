@@ -64,7 +64,7 @@ export default function Landing() {
     { icon: Building2, title: "Projects", stat: n(s?.companies), sub: "Look up a crypto project and see its whole security history on one page." },
     { icon: Bug, title: "Hacks", stat: n(s?.hacks), sub: "Study past hacks: how much was lost and how the attacker got in." },
     { icon: Banknote, title: "Funding rounds", stat: n(s?.funding), sub: "See who backed a project, how much they put in, and when." },
-    { icon: GitBranch, title: "Code activity", stat: "Live", sub: "See whether a project's code is still being worked on, and what changed after its last audit." },
+    { icon: GitBranch, title: "Code activity", stat: null, sub: "See whether a project's code is still being worked on, and what changed after its last audit." },
     { icon: Boxes, title: "On-chain contracts", stat: n(s?.onchain), sub: "Find the programs a project has deployed on a blockchain (\"on-chain\"), so you can match what is live to what was reviewed." },
   ];
 
@@ -85,14 +85,14 @@ export default function Landing() {
           <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[min(720px,100vw)] h-[420px] rounded-full bg-primary/[0.10] blur-[120px]" />
           <div className="relative inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/30 bg-primary/[0.08] text-[11px] uppercase tracking-[0.12em] text-primary font-semibold min-h-[26px]">
             <Activity className="w-3 h-3 motion-safe:animate-pulse" aria-hidden />
-            {s ? `${n(s.audits)} audits tracked${s.audits24h > 0 ? ` · ${n(s.audits24h)} added today` : ""}` : "Live security data"}
+            {s ? `${n(s.audits)} audits tracked${s.audits24h > 0 ? ` · ${n(s.audits24h)} added in the last 24h` : ""}` : "Live security data"}
           </div>
           <h1 className="relative text-[34px] sm:text-5xl md:text-6xl font-bold tracking-[-0.03em] leading-[1.05] mt-6 max-w-[860px] mx-auto">
             Check any crypto project's <span className="text-primary">security record</span> in seconds.
           </h1>
           <p className="relative text-[15.5px] md:text-lg text-muted-foreground max-w-[640px] mx-auto leading-relaxed mt-5">
             Crypto projects hire independent firms to review their code for flaws; those reviews are called audits.
-            AuditScope collects {s ? n(s.audits) : "tens of thousands of"} published audits, the issues each one found, and the hacks that followed, so you can judge risk without digging through PDFs.
+            AuditScope collects {s ? `${n(s.audits)} ` : ""}published audits, the issues each one found, and the hacks that followed, so you can judge risk without digging through PDFs.
           </p>
           <div className="relative flex flex-col sm:flex-row gap-2 justify-center mt-7">
             <Link to={primaryHref} className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-5 rounded-md bg-primary text-primary-foreground text-[14px] font-semibold hover:bg-primary/90">
@@ -111,7 +111,7 @@ export default function Landing() {
             <LazyRadar size={300} />
             <p className="relative text-[12.5px] text-muted-foreground mt-3 inline-flex items-center gap-1.5">
               <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse" />
-              Tracking {s ? n(s.companies) : "21,000+"} crypto projects for new audits
+              Tracking {s ? `${n(s.companies)} ` : ""}crypto projects for new audits
             </p>
           </div>
         </section>
@@ -154,8 +154,8 @@ export default function Landing() {
                 <div aria-hidden className="w-11 h-11 rounded-xl bg-primary/[0.12] text-primary flex items-center justify-center ring-1 ring-primary/20">
                   <Icon className="w-5 h-5" />
                 </div>
-                <div className="text-[26px] leading-none font-semibold tabular-nums mt-4 text-foreground tracking-tight">{stat}</div>
-                <h3 className="text-[15px] font-semibold text-foreground mt-2">{title}</h3>
+                {stat && <div className="text-[26px] leading-none font-semibold tabular-nums mt-4 text-foreground tracking-tight">{stat}</div>}
+                <h3 className={`text-[15px] font-semibold text-foreground ${stat ? "mt-2" : "mt-4"}`}>{title}</h3>
                 <p className="text-[13px] text-muted-foreground mt-1 leading-relaxed">{sub}</p>
               </div>
             ))}

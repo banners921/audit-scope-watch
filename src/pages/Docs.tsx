@@ -76,7 +76,7 @@ curl '${BASE_URL}/audits?limit=10' \\
             id="audits"
             method="GET"
             path="/v1/audits"
-            desc="Audit reports across every firm we scrape (Trail of Bits, Cyfrin, Zellic, Perimeter, OpenZeppelin, Halborn, Spearbit, and 40+ more). Ordered newest first."
+            desc="Audit reports across every firm we scrape (Trail of Bits, Cyfrin, Zellic, Perimeter, OpenZeppelin, Halborn, Spearbit and many others). Ordered newest first."
             baseUrl={BASE_URL}
             params={[
               { name: "firm", type: "string", desc: 'Exact firm name (case-insensitive). e.g. "Cyfrin", "Trail of Bits"' },
@@ -198,7 +198,7 @@ curl '${BASE_URL}/audits?limit=10' \\
             id="funding"
             method="GET"
             path="/v1/funding-rounds"
-            desc="Crypto funding rounds: a feed of raises with investors and announcement links. Refreshed every 15 minutes."
+            desc="Crypto funding rounds: a feed of raises with investors and announcement links."
             baseUrl={BASE_URL}
             params={[
               { name: "since", type: "date (YYYY-MM-DD)", desc: "Filter round date >= since" },

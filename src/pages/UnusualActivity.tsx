@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, Activity, ShieldAlert, Server, TrendingUp, TrendingDown, Flame, AlertCircle, Sparkles } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/fetchAll";
 import { CompanyLogo } from "@/components/CompanyLogo";
 
 type Anomaly = {
@@ -159,18 +160,30 @@ export default function UnusualActivity() {
     queryKey: ["unusual-activity-anomalies", tab, sinceDate],
     queryFn: async (): Promise<Anomaly[]> => {
       const audienceFilter = tab === "security" ? "audience.eq.security,audience.eq.both" : "audience.eq.infra,audience.eq.both";
-      const { data, error } = await supabase
+      // Every anomaly in the window: the tiles above are counts.
+      return await fetchAll<Anomaly>((from, to) => supabase
         .from("metric_anomalies")
         .select("id,company_slug,chain,metric_kind,audience,date,value,mean_30d,stdev_30d,z_score,direction,detail,created_at")
         .gte("date", sinceDate)
         .or(audienceFilter)
         .order("date", { ascending: false })
         .order("z_score", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return (data || []) as Anomaly[];
+        .order("id")
+        .range(from, to));
     },
   });
+
+  // How fresh the anomaly data is. The collector has no schedule right now, so
+  // say plainly when the newest reading is old instead of implying a daily run.
+  const newestQ = useQuery({
+    queryKey: ["anomalies-newest"],
+    queryFn: async () => {
+      const { data } = await supabase.from("metric_anomalies").select("date").order("date", { ascending: false }).limit(1);
+      return (data?.[0]?.date as string | undefined) ?? null;
+    },
+  });
+  const newest = newestQ.data ?? null;
+  const stale = newest ? Date.now() - new Date(newest).getTime() > 3 * 86400000 : false;
 
   const slugs = useMemo(
     () => Array.from(new Set((anomaliesQ.data || []).map((a) => a.company_slug).filter(Boolean) as string[])),
@@ -235,6 +248,12 @@ export default function UnusualActivity() {
           Every protocol has a "normal." This page surfaces protocols where the last reading is way outside that normal —
           a strong, dated reason to reach out <em>this week</em>, before the prospect even tells you they're in a moment.
         </p>
+        {stale && newest && (
+          <p className="text-[12.5px] text-amber-200/90 mt-2 max-w-2xl">
+            Anomaly detection is not running right now. The newest data is from{" "}
+            {new Date(newest).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, so treat these as historical, not this week's moves.
+          </p>
+        )}
       </header>
 
       {/* Tabs */}
@@ -278,14 +297,14 @@ export default function UnusualActivity() {
         {tab === "security" ? (
           <p className="text-sm text-muted-foreground leading-relaxed">
             <span className="text-white font-semibold">Why each protocol is flagged:</span> their on-chain fees or trading volume
-            just blew past their own 30-day average by &gt;2 standard deviations. For a security firm, that usually means
+            just blew past their own 30-day average by 2.5 or more standard deviations. For a security firm, that usually means
             <span className="text-white"> new code shipped</span>, <span className="text-white">user surge</span>, or
             <span className="text-white"> incident</span> — all three are reasons to reach out with relevant timing.
           </p>
         ) : (
           <p className="text-sm text-muted-foreground leading-relaxed">
             <span className="text-white font-semibold">Why each protocol is flagged:</span> their on-chain activity (fees / trade volume)
-            just blew past their own 30-day baseline by &gt;2 standard deviations. For an infra / RPC vendor, that's a direct
+            just blew past their own 30-day baseline by 2.5 or more standard deviations. For an infra / RPC vendor, that's a direct
             tell that their <span className="text-white">request load just spiked</span> — and the conversation about premium RPC,
             archival, dedicated nodes, or indexing has a real anchor.
           </p>
@@ -352,8 +371,9 @@ export default function UnusualActivity() {
         <div className="as-card p-8 text-center">
           <div className="text-sm font-semibold text-white">No protocols outside their normal range</div>
           <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-            The daily collector runs at 6 AM UTC and flags every protocol that drifted &gt;2σ from its 30-day baseline.
-            On a calm market day, this page can be empty — that's accurate, not broken.
+            {newest
+              ? <>Nothing in this window drifted 2.5σ or more from its 30-day baseline. Newest anomaly data: {new Date(newest).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.</>
+              : <>No anomaly data has been collected yet.</>}
           </p>
         </div>
       ) : (
@@ -432,15 +452,15 @@ export default function UnusualActivity() {
         <div className="mt-3 space-y-2 text-[13px] text-muted-foreground leading-relaxed">
           <p>
             <span className="text-white font-semibold">Source:</span> DefiLlama's daily fee + trade-volume series per protocol.
-            We pull the last 90 days every morning at 6 AM UTC.
+            Each run looks at the last 90 days.{newest ? ` Newest data: ${new Date(newest).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.` : ""}
           </p>
           <p>
             <span className="text-white font-semibold">Normal:</span> for each protocol, we compute the mean and standard deviation
-            of the prior 30 days. A reading is "unusual" if today's value is 2+ standard deviations away from that mean.
+            of the prior 30 days. A reading is "unusual" if the day's value is 2.5 or more standard deviations away from that mean (protocols with very small fees or volume are skipped).
           </p>
           <p>
             <span className="text-white font-semibold">Hot vs warm vs watch:</span> Hot = ≥3.5σ (rare; strong signal).
-            Warm = 2.5–3.5σ. Watch = 2.0–2.5σ. Within each tier, sorted by recency.
+            Warm = 2.5–3.5σ. Within each tier, sorted by recency.
           </p>
           <p>
             <span className="text-white font-semibold">Why not all protocols show up:</span> DefiLlama only tracks protocols with

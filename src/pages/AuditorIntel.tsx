@@ -177,8 +177,8 @@ export default function AuditorIntel() {
     queryFn: async () => {
       const { data } = await supabase
         .from("protocol_metrics")
-        .select("company_slug,tvl,date")
-        .not("tvl", "is", null)
+        .select("company_slug,tvl:tvl_usd,date")
+        .not("tvl_usd", "is", null)
         .order("date", { ascending: false })
         .limit(5000);
       const m = new Map<string, number>();

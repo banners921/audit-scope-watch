@@ -207,7 +207,7 @@ export default function Companies({ forceTab }: Props = {}) {
         all.push(...(data as Row[]));
         if (data.length < 1000) break;
         from += 1000;
-        if (all.length > 8000) break;
+        // No early stop: the page shows "X of <total>", so it needs every row.
       }
       return all;
     },

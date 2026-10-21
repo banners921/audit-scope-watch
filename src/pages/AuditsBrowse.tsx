@@ -113,11 +113,10 @@ function ReportsView() {
         supabase.from("audit_history").select("id", { count: "exact", head: true }),
         supabase.from("audit_history").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
         supabase.from("audit_history").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 24 * 3600000).toISOString()),
-        supabase.from("audit_history").select("audit_firm").not("audit_firm", "is", null).limit(50000),
+        // Exact per-firm counts from the database (a client-side tally only saw 1,000 rows).
+        supabase.rpc("audit_firm_counts"),
       ]);
-      const uniq = new Set<string>();
-      for (const r of (distinctFirms.data ?? []) as any[]) if (r.audit_firm) uniq.add(r.audit_firm);
-      return { total: tot.count ?? 0, last7d: last7.count ?? 0, last24h: last24.count ?? 0, unique_firms: uniq.size };
+      return { total: tot.count ?? 0, last7d: last7.count ?? 0, last24h: last24.count ?? 0, unique_firms: (distinctFirms.data ?? []).length };
     },
   });
 
@@ -126,12 +125,9 @@ function ReportsView() {
     queryKey: ["audits-all-firms"],
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Option[]> => {
-      const { data } = await supabase.from("audit_history").select("audit_firm").not("audit_firm", "is", null).limit(50000);
-      const tally = new Map<string, number>();
-      for (const r of (data ?? []) as any[]) if (r.audit_firm) tally.set(r.audit_firm, (tally.get(r.audit_firm) ?? 0) + 1);
-      return Array.from(tally.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([v, c]) => ({ value: v, label: v, count: c }));
+      const { data, error } = await supabase.rpc("audit_firm_counts");
+      if (error) throw error;
+      return ((data ?? []) as Array<{ audit_firm: string; n: number }>).map((r) => ({ value: r.audit_firm, label: r.audit_firm, count: Number(r.n) }));
     },
   });
 
@@ -140,14 +136,9 @@ function ReportsView() {
     queryKey: ["audits-all-chains"],
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Option[]> => {
-      const { data } = await supabase.from("audit_history").select("audited_chains").not("audited_chains", "is", null).limit(50000);
-      const tally = new Map<string, number>();
-      for (const r of (data ?? []) as any[]) {
-        if (Array.isArray(r.audited_chains)) for (const c of r.audited_chains) if (c) tally.set(c, (tally.get(c) ?? 0) + 1);
-      }
-      return Array.from(tally.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([v, c]) => ({ value: v, label: v, count: c }));
+      const { data, error } = await supabase.rpc("audit_chain_counts");
+      if (error) throw error;
+      return ((data ?? []) as Array<{ chain: string; n: number }>).map((r) => ({ value: r.chain, label: r.chain, count: Number(r.n) }));
     },
   });
 
@@ -176,7 +167,7 @@ function ReportsView() {
       let query = supabase
         .from("audit_history")
         .select(
-          "id,company_slug,protocol_name,audit_firm,audit_date,findings_critical,findings_high,findings_medium,findings_low,findings_informational,findings_gas,report_url,audit_type,audited_chains,audit_loc,files_audited_count,audited_repo_url",
+          "id,company_slug,protocol_name,audit_firm,audit_date,findings_critical,findings_high,findings_medium,findings_low,findings_informational,findings_gas,report_url,audit_type,audited_chains,audit_loc,files_audited_count,audited_repo_url,findings_extraction_status",
           { count: "exact" }
         );
       if (q.trim().length >= 2) {
@@ -288,6 +279,8 @@ function ReportsView() {
             l: a.findings_low ?? 0, i: a.findings_informational ?? 0, g: a.findings_gas ?? 0,
           };
           const totalFindings = findings.c + findings.h + findings.m + findings.l + findings.i + findings.g;
+          // Unscored audits store 0/0/0/0 by default; show them as pending, not clean.
+          const scored = String((a as any).findings_extraction_status ?? "").startsWith("extracted");
           return (
             <Link
               key={a.id}
@@ -326,12 +319,16 @@ function ReportsView() {
                 )}
               </div>
 
-              <div className="grid grid-cols-4 gap-1">
-                <FindingTile label="Crit" n={findings.c} tone="rose" />
-                <FindingTile label="High" n={findings.h} tone="amber" />
-                <FindingTile label="Med" n={findings.m} tone="yellow" />
-                <FindingTile label="Low" n={findings.l} tone="muted" />
-              </div>
+              {scored ? (
+                <div className="grid grid-cols-4 gap-1">
+                  <FindingTile label="Crit" n={findings.c} tone="rose" />
+                  <FindingTile label="High" n={findings.h} tone="amber" />
+                  <FindingTile label="Med" n={findings.m} tone="yellow" />
+                  <FindingTile label="Low" n={findings.l} tone="muted" />
+                </div>
+              ) : (
+                <div className="text-[11px] text-muted-foreground rounded border border-white/[0.04] bg-white/[0.02] px-2 py-1.5">Severity pending</div>
+              )}
 
               <div className="flex items-center justify-between text-[10.5px] text-muted-foreground border-t border-white/[0.04] pt-2 mt-auto">
                 <div className="flex items-center gap-2.5 truncate">
@@ -350,7 +347,7 @@ function ReportsView() {
                       <span className="opacity-70">on</span> {a.audited_chains.slice(0, 2).join(", ")}{a.audited_chains.length > 2 ? ` +${a.audited_chains.length - 2}` : ""}
                     </span>
                   )}
-                  {totalFindings === 0 && !a.audit_loc && !a.files_audited_count && (
+                  {scored && totalFindings === 0 && !a.audit_loc && !a.files_audited_count && (
                     <span className="text-muted-foreground/60 text-[10px]">No findings extracted</span>
                   )}
                 </div>

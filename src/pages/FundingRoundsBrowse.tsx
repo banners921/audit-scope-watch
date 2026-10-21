@@ -32,16 +32,12 @@ export default function FundingRoundsBrowse() {
     queryKey: ["funding-round-types"],
     staleTime: 10 * 60_000,
     queryFn: async (): Promise<Option[]> => {
-      const { data } = await supabase.from("funding_rounds").select("round_type").not("round_type", "is", null).limit(50000);
-      const tally = new Map<string, number>();
-      for (const r of (data ?? []) as any[]) {
-        const t = (r.round_type || "").trim();
-        if (!t) continue;
-        tally.set(t, (tally.get(t) ?? 0) + 1);
-      }
-      return Array.from(tally.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([v, c]) => ({ value: v, label: v, count: c }));
+      // Exact counts from the database (a client-side tally only saw 1,000 rows).
+      const { data, error } = await supabase.rpc("funding_round_type_counts");
+      if (error) throw error;
+      return ((data ?? []) as Array<{ round_type: string; n: number }>)
+        .filter((r) => r.round_type.trim())
+        .map((r) => ({ value: r.round_type, label: r.round_type, count: Number(r.n) }));
     },
   });
 

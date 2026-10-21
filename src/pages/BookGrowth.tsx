@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Banknote, Users, ArrowRight } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip as ReTooltip, XAxis, YAxis, BarChart, Bar, Cell } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/fetchAll";
 import { BrandLogo } from "@/components/BrandLogo";
 import { BookTabs } from "@/components/BookTabs";
 import { useFundSlug, usePortfolioSlugs, usePortfolioCompanies } from "@/lib/usePortfolioSlugs";
@@ -30,10 +31,10 @@ export default function BookGrowth() {
     enabled: slugs.length > 0,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-      const { data } = await supabase
-        .from("protocol_metrics").select("company_slug,tvl,date")
-        .in("company_slug", slugs).not("tvl", "is", null)
-        .gte("date", cutoff).order("date", { ascending: true });
+      const data = await fetchAll((from, to) => supabase
+        .from("protocol_metrics").select("company_slug,tvl:tvl_usd,date")
+        .in("company_slug", slugs).not("tvl_usd", "is", null)
+        .gte("date", cutoff).order("date", { ascending: true }).order("company_slug").range(from, to));
       const bySlug = new Map<string, Array<{ date: string; tvl: number }>>();
       for (const r of (data ?? []) as any[]) {
         const arr = bySlug.get(r.company_slug) ?? [];

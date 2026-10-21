@@ -73,7 +73,7 @@ export default function LPReport() {
         RISK_SCORES_LIVE
           ? supabase.from("protocol_risk_scores").select("company_slug,composite_score,band").in("company_slug", slugs)
           : Promise.resolve({ data: [] as any[] }),
-        supabase.from("protocol_metrics").select("company_slug,tvl,date").in("company_slug", slugs).not("tvl", "is", null).order("date", { ascending: false }).limit(3000),
+        supabase.from("protocol_metrics").select("company_slug,tvl:tvl_usd,date").in("company_slug", slugs).not("tvl_usd", "is", null).order("date", { ascending: false }).limit(3000),
         supabase.from("audit_history").select("company_slug,findings_critical,findings_high").in("company_slug", slugs).eq("findings_extraction_status", "extracted"),
         supabase.from("hacks").select("company_slug,name,hack_date,amount_usd").in("company_slug", slugs).order("hack_date", { ascending: false }),
       ]);
